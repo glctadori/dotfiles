@@ -1,0 +1,162 @@
+#!/bin/sh
+# Restic backups, restores and repository cleanup for HDD and Backblaze B2.
+# Usage: backup hdd|b2 backup|restore|prune
+# Credentials come from Bitwarden; no repository is initialized automatically.
+set -eu
+
+usage='Usage: backup hdd|b2 backup|restore|prune'
+[ "$#" -eq 2 ] || { printf '%s\n' "$usage" >&2; exit 2; }
+case $1 in hdd|b2) kind=$1 ;; *) printf '%s\n' "$usage" >&2; exit 2 ;; esac
+case $2 in backup|restore|prune) action=$2 ;; *) printf '%s\n' "$usage" >&2; exit 2 ;; esac
+
+# This shell configuration contains paths only, never credentials.
+. "${HOME:?}/.config/backup/config"
+title="Backup $kind"
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send "$title" "$1" >/dev/null 2>&1 || :; }
+fail() { printf '%s: %s\n' "$title" "$1" >&2; notify "Errore: $1"; exit 1; }
+
+for tool in restic pass gpg jq flock; do command -v "$tool" >/dev/null 2>&1 || fail "Manca $tool"; done
+
+# Scheduled HDD jobs skip an absent disk; interactive restore reports failure.
+if [ "$action" = restore ]; then
+  command -v fzf >/dev/null 2>&1 || fail 'Manca fzf'
+fi
+if [ "$kind" = hdd ]; then
+  if ! mountpoint -q "$HDD_MOUNT"; then
+    [ "$action" != restore ] || fail 'Collega e monta il disco BACKUP'
+    printf '%s\n' 'HDD assente: operazione saltata'
+    exit 0
+  fi
+
+  source=$(findmnt -rn -o SOURCE --target "$HDD_MOUNT")
+  [ "$source" = "$HDD_SOURCE" ] || fail "Disco inatteso su $HDD_MOUNT"
+
+  repo=$HDD_REPOSITORY
+  password_item=backup/hdd/restic-password
+  tag=backup-hdd
+else
+  repo=$(pass show backup/b2/repository) || fail 'Repository B2 mancante in pass'
+  B2_ACCOUNT_ID=$(pass show backup/b2/account-id) || fail 'B2 account ID mancante in pass'
+  B2_ACCOUNT_KEY=$(pass show backup/b2/account-key) || fail 'B2 account key mancante in pass'
+
+  export B2_ACCOUNT_ID B2_ACCOUNT_KEY
+
+  password_item=backup/b2/restic-password
+  tag=backup-b2
+fi
+
+# Serialize backup and prune per destination; restore uses Restic repository locks.
+runtime=${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}
+if [ "$action" != restore ]; then
+  exec 9>"$runtime/backup-$kind.lock"
+  flock -n 9 || { printf '%s\n' "$title gia in corso"; exit 0; }
+fi
+
+# Scheduled jobs retry until backup and retention succeed for the current period.
+if [ "$action" = backup ]; then
+  state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/backup
+  success_file=$state_dir/$kind-success
+  case $kind in
+    b2) period=$(date +%F) ;;
+    hdd) period=$(date +%G-%V) ;;
+  esac
+  if [ "${BACKUP_SCHEDULED:-0}" = 1 ] && [ -f "$success_file" ] &&
+    [ "$(cat "$success_file")" = "$period" ]; then
+    printf '%s\n' "$title gia completato per $period"
+    exit 0
+  fi
+fi
+
+# Keep the Restic password private and remove it when the command exits.
+password_file=$(mktemp "$runtime/backup-restic.XXXXXX")
+recovery_dir=$(mktemp -d "$runtime/backup-recovery.XXXXXX")
+chmod 600 "$password_file"
+chmod 700 "$recovery_dir"
+
+trap 'rm -f "$password_file"; rm -rf "$recovery_dir"' EXIT HUP INT TERM
+
+pass show "$password_item" > "$password_file" ||
+  fail "Impossibile leggere $password_item da pass"
+
+[ -s "$password_file" ] ||
+  fail "Password Restic vuota: $password_item"
+
+
+if [ "$action" = backup ]; then
+  gpg --export-secret-keys --armor > "$recovery_dir/gpg-private.asc" ||
+    fail 'Export chiave GPG privata fallito'
+
+  gpg --export --armor > "$recovery_dir/gpg-public.asc" ||
+    fail 'Export chiave GPG pubblica fallito'
+
+  gpg --export-ownertrust > "$recovery_dir/gpg-ownertrust.txt" ||
+    fail 'Export ownertrust GPG fallito'
+
+  cp -a "$HOME/.password-store" "$recovery_dir/password-store" ||
+    fail 'Copia password-store fallita'
+fi
+
+# Verify an existing repository before performing any write.
+restic -r "$repo" --password-file "$password_file" snapshots --json >/dev/null || fail 'Repository non accessibile; verifica percorso e password'
+
+if [ "$action" = backup ]; then
+  # Retention includes the previous tags so existing managed snapshots still expire.
+  notify 'Backup avviato'
+  if [ "$kind" = hdd ]; then
+    restic -r "$repo" --password-file "$password_file" backup --one-file-system --tag "$tag" \
+      --exclude "$HOME/Downloads" --exclude "$HOME/.cache" \
+      --exclude "$HOME/.local/share/Trash" \
+      "$HOME" "$recovery_dir" || fail 'Backup fallito'
+    restic -r "$repo" --password-file "$password_file" forget --tag "$tag" --tag "dotfiles-$kind" \
+      --keep-weekly 8 --keep-monthly 12 || fail 'Conservazione snapshot fallita'
+  else
+    [ -d "$HOME/Projects" ] && [ -d "$HOME/Documents" ] || fail 'Projects o Documents mancante'
+    restic -r "$repo" --password-file "$password_file" backup --tag "$tag" \
+      "$HOME/Projects" "$HOME/Documents" "$recovery_dir" || fail 'Backup fallito'
+    restic -r "$repo" --password-file "$password_file" forget --tag "$tag" --tag "dotfiles-$kind" \
+      --keep-daily 7 --keep-weekly 4 --keep-monthly 12 || fail 'Conservazione snapshot fallita'
+  fi
+  mkdir -p "$state_dir"
+  printf '%s\n' "$period" > "$success_file"
+  notify 'Backup completato'
+elif [ "$action" = prune ]; then
+  # Prune frees data no longer referenced after snapshot retention.
+  notify 'Pulizia Restic avviata'
+  restic -r "$repo" --password-file "$password_file" prune || fail 'Pulizia Restic fallita'
+  notify 'Pulizia Restic completata'
+else
+  # Select a snapshot, then choose an individual path to recover.
+  snapshots=$(restic -r "$repo" --password-file "$password_file" snapshots --json)
+  snapshot=$(printf '%s\n' "$snapshots" | jq -r '.[] | [.time[0:19], .id, (.paths | join(", "))] | @tsv' | \
+    fzf --prompt='Snapshot > ' --with-nth=1,3 | cut -f2)
+  [ -n "$snapshot" ] || exit 0
+  selection=$(restic -r "$repo" --password-file "$password_file" ls --json "$snapshot" | \
+    jq -r 'select(.struct_type == "node" and (.type == "file" or .type == "dir")) | if .type == "dir" then .path + "/" else .path end' | \
+    fzf --prompt='File o cartella > ') || exit 0
+  [ -n "$selection" ] || exit 0
+
+  # Use a new destination under Downloads to preserve current files.
+  target=$HOME/Downloads/Restored/$kind/$(printf '%s' "$snapshot" | cut -c1-12)-$(date +%Y%m%d-%H%M%S)
+  [ ! -e "$target" ] || { printf 'Destinazione gia esistente: %s\n' "$target" >&2; exit 1; }
+  mkdir -p "$target"
+  case $selection in
+    */)
+      selected_dir=${selection%/}
+      restic -r "$repo" --password-file "$password_file" restore "$snapshot:$selected_dir" --target "$target" || {
+        printf 'Ripristino fallito; controlla %s\n' "$target" >&2
+        exit 1
+      }
+      ;;
+    *)
+      selected_dir=${selection%/*}
+      selected_file=${selection##*/}
+      restic -r "$repo" --password-file "$password_file" restore "$snapshot:$selected_dir" \
+        --include "/$selected_file" --target "$target" || {
+        printf 'Ripristino fallito; controlla %s\n' "$target" >&2
+        exit 1
+      }
+      ;;
+  esac
+  printf '\nRipristinato in: %s\n' "$target"
+  command -v notify-send >/dev/null 2>&1 && notify-send 'Ripristino completato' "$target" >/dev/null 2>&1 || :
+fi
