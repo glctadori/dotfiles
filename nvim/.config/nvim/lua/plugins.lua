@@ -31,43 +31,42 @@ return {
     end,
   },
   { "nvim-mini/mini.icons", opts = {} },
-  {
-    "olimorris/codecompanion.nvim",
-    version = "^19.0.0",
-    cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionActions", "CodeCompanionCodeReview" },
-    dependencies = { "nvim-lua/plenary.nvim", "nvim-treesitter/nvim-treesitter" },
-    opts = {
-      adapters = {
-        http = {
-          openrouter = function()
-            return require("codecompanion.adapters").extend("openrouter", {
-              env = {
-                -- Inserisci manualmente la tua API key OpenRouter tra le virgolette.
-                -- api_key = """
+{
+  "olimorris/codecompanion.nvim",
+  version = "^19.0.0",
+  cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionActions", "CodeCompanionCodeReview" },
+  dependencies = { "nvim-lua/plenary.nvim", "nvim-treesitter/nvim-treesitter" },
+  opts = {
+    adapters = {
+      http = {
+        openrouter = function()
+          return require("codecompanion.adapters").extend("openrouter", {
+            env = {
+              api_key = "cmd:pass show api/openrouter",
+            },
+            schema = {
+              model = {
+                default = "deepseek/deepseek-v4.1-flash",
               },
-              schema = {
-                model = {
-                  default = "deepseek/deepseek-v4.1-flash",
-                },
-              },
-            })
-          end,
-        },
-      },
-      interactions = {
-        chat = { adapter = "openrouter" },
-        inline = { adapter = "openrouter" },
-        cmd = { adapter = "openrouter" },
-        background = { adapter = "openrouter" },
+            },
+          })
+        end,
       },
     },
-    keys = {
-      { "<leader>aa", "<cmd>CodeCompanionActions<cr>", mode = { "n", "v" }, desc = "AI actions" },
-      { "<leader>ac", "<cmd>CodeCompanionChat Toggle<cr>", mode = { "n", "v" }, desc = "Toggle AI chat" },
-      { "<leader>as", "<cmd>CodeCompanionChat Add<cr>", mode = "v", desc = "Add selection to AI chat" },
-      { "<leader>ar", "<cmd>CodeCompanionCodeReview<cr>", desc = "Review AI changes" },
+    interactions = {
+      chat = { adapter = "openrouter" },
+      inline = { adapter = "openrouter" },
+      cmd = { adapter = "openrouter" },
+      background = { adapter = "openrouter" },
     },
   },
+  keys = {
+    { "<leader>aa", "<cmd>CodeCompanionActions<cr>", mode = { "n", "v" }, desc = "AI actions" },
+    { "<leader>ac", "<cmd>CodeCompanionChat Toggle<cr>", mode = { "n", "v" }, desc = "Toggle AI chat" },
+    { "<leader>as", "<cmd>CodeCompanionChat Add<cr>", mode = "v", desc = "Add selection to AI chat" },
+    { "<leader>ar", "<cmd>CodeCompanionCodeReview<cr>", desc = "Review AI changes" },
+  },
+},
   {
     "folke/snacks.nvim",
     lazy = false,
