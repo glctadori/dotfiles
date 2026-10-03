@@ -1,0 +1,218 @@
+
+exec mako
+# exec ~/.local/bin/theme-toggle apply
+
+#### SwayOSD
+exec swayosd-server
+
+# Dischi rimovibili, autorizzazioni e archivio credenziali desktop
+# exec gnome-keyring-daemon --start --components=secrets
+exec lxqt-policykit-agent
+exec udiskie
+# exec ~/.local/bin/iphone-automount
+
+# Make Wayland/Sway environment available to portals and systemd services
+exec dbus-update-activation-environment --systemd \
+    WAYLAND_DISPLAY SWAYSOCK DISPLAY \
+    XDG_CURRENT_DESKTOP=sway
+exec systemctl --user restart xdg-desktop-portal.service
+
+# Night mode
+exec gammastep -l 45.4:11.0 -t 6500:3500
+
+# Blocco e risparmio energetico
+# 5 min: blocca; 10 min: spegne gli schermi; 15 min: sospende.
+# Il lock scatta anche prima della sospensione (coperchio, tasto sleep).
+exec swayidle -w \
+    timeout 300 'theme lock' \
+    timeout 600 'swaymsg "output * power off"' \
+        resume 'swaymsg "output * power on"' \
+    timeout 900 'systemctl suspend' \
+    before-sleep 'theme lock'
+
+# schermi
+output eDP-1 scale 1
+
+# I workspace dell'utente restano sul pannello del portatile. Il mirror usa
+# il workspace tecnico __mirror, creato sull'output esterno dallo script.
+workspace 1 output eDP-1
+workspace 2 output eDP-1
+workspace 3 output eDP-1
+workspace 4 output eDP-1
+workspace 5 output eDP-1
+workspace 6 output eDP-1
+workspace 7 output eDP-1
+workspace 8 output eDP-1
+workspace 9 output eDP-1
+
+set $mod Mod4
+set $term foot
+set $menu fuzzel
+set $browser brave
+set $ai claude
+
+input type:keyboard {
+    repeat_delay 300
+    repeat_rate 50
+    xkb_layout it
+}
+
+input type:touchpad {
+    tap enabled
+    natural_scroll enabled
+}
+
+
+
+# Volume
+bindsym XF86AudioRaiseVolume exec swayosd-client --output-volume raise
+bindsym XF86AudioLowerVolume exec swayosd-client --output-volume lower
+bindsym XF86AudioMute exec swayosd-client --output-volume mute-toggle
+bindsym XF86AudioMicMute exec swayosd-client --input-volume mute-toggle
+
+# Brightness
+bindsym XF86MonBrightnessUp exec swayosd-client --brightness raise
+bindsym XF86MonBrightnessDown exec swayosd-client --brightness lower
+
+
+# App
+bindsym $mod+Return exec $term
+bindsym $mod+d exec $menu
+bindsym $mod+Shift+d exec palette
+bindsym $mod+w exec $browser
+bindsym $mod+n exec $term -e nvim -c VimwikiIndex
+bindsym $mod+r exec $term -e yazi
+bindsym $mod+m exec $term -e ncmpcpp
+bindsym $mod+e exec $term -e neomutt
+bindsym $mod+c exec brave --app=https://chatgpt.com
+bindsym $mod+Shift+c exec project-agent
+bindsym $mod+Shift+n exec $term -e newsboat
+bindsym $mod+i exec add-to-inbox
+bindsym $mod+Shift+i exec package-install
+
+# Blocco e sospensione manuali
+bindsym $mod+Ctrl+l exec theme lock
+bindsym $mod+Shift+s exec theme lock-suspend
+bindsym $mod+Shift+w exec wifi-reconnect
+bindsym $mod+F12 exec theme select
+
+### Media keys
+
+bindsym $mod+p exec mpc toggle
+
+# Volume
+# bindsym XF86AudioRaiseVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+# bindsym XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+# bindsym XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+# bindsym XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+
+# Brightness
+# bindsym XF86MonBrightnessUp exec brightnessctl set +5%
+# bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+
+### Screenshots
+
+# Seleziona area → copia negli appunti
+bindsym Print exec grim -g "$(slurp)" - | wl-copy
+
+# Schermo intero → copia negli appunti
+bindsym $mod+Print exec grim - | wl-copy
+
+# Area → file
+bindsym Shift+Print exec mkdir -p "$(xdg-user-dir PICTURES)/Screenshots" && grim -g "$(slurp)" "$(xdg-user-dir PICTURES)/Screenshots/$(date +'%Y-%m-%d_%H-%M-%S').png"
+
+
+
+# Focus standard stile i3/Sway
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+# Sposta finestre
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+
+# Layout
+bindsym $mod+b splith
+bindsym $mod+v splitv
+bindsym $mod+s layout stacking
+# bindsym $mod+e layout toggle split
+
+# Floating/fullscreen
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle
+bindsym $mod+f fullscreen toggle
+
+# Chiudi
+bindsym $mod+q kill
+
+# Reload / exit
+bindsym $mod+Shift+e exit
+
+# Resize mode
+mode "resize" {
+    bindsym h resize shrink width 10 px
+    bindsym j resize grow height 10 px
+    bindsym k resize shrink height 10 px
+    bindsym l resize grow width 10 px
+
+    bindsym Left  resize shrink width 10 px
+    bindsym Down  resize grow height 10 px
+    bindsym Up    resize shrink height 10 px
+    bindsym Right resize grow width 10 px
+
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+
+bindsym $mod+Shift+r mode "resize"
+
+# Workspace
+
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+7 workspace number 7
+bindsym $mod+8 workspace number 8
+bindsym $mod+9 workspace number 9
+
+bindsym $mod+Shift+1 move container to workspace number 1
+bindsym $mod+Shift+2 move container to workspace number 2
+bindsym $mod+Shift+3 move container to workspace number 3
+bindsym $mod+Shift+4 move container to workspace number 4
+bindsym $mod+Shift+5 move container to workspace number 5
+bindsym $mod+Shift+6 move container to workspace number 6
+bindsym $mod+Shift+7 move container to workspace number 7
+bindsym $mod+Shift+8 move container to workspace number 8
+bindsym $mod+Shift+9 move container to workspace number 9
+
+# Mirroring del pannello interno sul primo output esterno disponibile.
+# Il watcher segue collegamento e scollegamento; Mod+F2 resta un override
+# manuale (toggle).
+exec_always mirror-toggle watch
+bindsym $mod+F2 exec mirror-toggle toggle
+for_window [app_id="at.yrlf.wl_mirror"] move container to workspace __mirror
+
+# No titlebar, thin borders
+default_border pixel 2
+default_floating_border pixel 2
+
+# Trasparenza leggera
+# for_window [class=".*"] opacity 0.95
+# for_window [app_id=".*"] opacity 0.95
+
+# Gaps
+gaps inner 6
+gaps outer 0
+
+# Font
+font pango:JetBrainsMono Nerd Font 13
+
+# Il selettore è mantenuto da `theme`; i file delle palette sono collegati da Stow.
+include ~/.config/theme/current/sway.conf
