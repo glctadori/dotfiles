@@ -1,5 +1,4 @@
 {
-  "codecompanion.nvim": { "branch": "main", "commit": "6794c8bcbe9e8614588749cafb5de29d7fa57c3b" },
   "conform.nvim": { "branch": "master", "commit": "016802de402556da54c36bd7359b441266b01cdd" },
   "everforest-nvim": { "branch": "main", "commit": "a0e9edc57379e8feafc6ba207c26dbb12fc1b6d8" },
   "fzf-lua": { "branch": "main", "commit": "d5c12c6d72ed84554f0f8dacb84f20da094b6a2d" },
@@ -8,6 +7,9 @@
   "mason-lspconfig.nvim": { "branch": "main", "commit": "b3298993d55fa194279b5eb9dbfb3a43da65cadf" },
   "mason.nvim": { "branch": "main", "commit": "2a6940af80375532e5e9e7c1f2fc6319a1b7a69d" },
   "mini.icons": { "branch": "main", "commit": "f642e3ba8c12afbc8f32f6d77ef6597eac56786f" },
+  "mini.nvim": { "branch": "main", "commit": "65d615e1f78775323bfd4651f694824256e2adc1" },
+  "nabla.nvim": { "branch": "master", "commit": "9b69b709063ccf40ac36fabb4fff7d90b3736475" },
+  "neogit": { "branch": "master", "commit": "70708be9664b7fcdd010eb07bdc3ebc9311c2027" },
   "nvim-lspconfig": { "branch": "master", "commit": "3e8d598d3b5f8338a41699c436e5fa11d2666cf0" },
   "nvim-treesitter": { "branch": "master", "commit": "cf12346a3414fa1b06af75c79faebe7f76df080a" },
   "plenary.nvim": { "branch": "master", "commit": "74b06c6c75e4eeb3108ec01852001636d85a932b" },

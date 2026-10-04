@@ -88,7 +88,6 @@ def main():
         else:
             prompt = stdin
 
-
     if not prompt and not args.file:
         parser.error("serve un prompt, stdin oppure almeno un file")
 
@@ -115,6 +114,7 @@ def main():
         ],
         "stream": True,
         "reasoning": {"effort": args.reasoning},
+        "plugins": [{"id": "file-parser", "pdf": {"engine": "pdf-text"}}],
     }
 
     request = urllib.request.Request(

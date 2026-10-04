@@ -1,0 +1,311 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+import shutil
+import mimetypes
+
+
+def make_transcript(messages):
+    parts = [
+        "Continua la seguente conversazione. "
+        "Rispondi soltanto all'ultimo messaggio USER."
+    ]
+
+    for message in messages:
+        role = "USER" if message["role"] == "user" else "ASSISTANT"
+        parts.append(f"\n{role}:\n{message['content']}")
+
+    return "\n".join(parts)
+
+
+def find_files():
+    if shutil.which("fd"):
+        command = ["fd", "--type", "f"]
+    elif shutil.which("fdfind"):
+        command = ["fdfind", "--type", "f"]
+    else:
+        command = ["find", ".", "-type", "f"]
+
+    return subprocess.check_output(command, text=True)
+
+def prepare_file(path):
+    path = Path(path)
+
+    mime, _ = mimetypes.guess_type(path)
+
+    if mime == "application/pdf":
+        return "attachment", str(path)
+
+    if mime and mime.startswith("image/"):
+        return "attachment", str(path)
+
+    try:
+        text = path.read_text()
+        return "text", text
+    except UnicodeDecodeError:
+        raise ValueError(f"File binario non supportato: {path}")
+
+def save_session(path, messages):
+    path.write_text(json.dumps({"messages": messages}, ensure_ascii=False, indent=2))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model")
+    parser.add_argument(
+        "-r",
+        "--reasoning",
+        choices=["none", "low", "medium", "high"],
+    )
+    parser.add_argument(
+        "--pipe",
+        action="store_true",
+        help="modalità frontend: niente prompt o output di interfaccia",
+    )
+    args = parser.parse_args()
+
+    session_dir = Path.home() / ".cache" / "chat"
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    session = Path(
+        tempfile.mkstemp(
+            prefix="chat-",
+            suffix=".json",
+            dir=session_dir,
+        )[1]
+    )
+
+    messages = []
+    save_session(session, messages)
+    if not args.pipe:
+        print("chat")
+        print("Ctrl-D or /exit to quit\n")
+
+    try:
+        while True:
+            files = []
+    
+            try:
+                if args.pipe:
+                    line = input()
+                    request = json.loads(line)
+    
+                    request_type = request.get("type")
+    
+                    if request_type == "message":
+                        user_input = request["text"]
+    
+                    elif request_type == "context":
+                        name = request.get("name", "context")
+                        context = request["text"]
+                        prompt = request.get(
+                            "prompt",
+                            "Analizza questo contenuto."
+                        )
+    
+                        user_input = (
+                            f"Contesto: {name}\n\n"
+                            f"```text\n{context}\n```\n\n"
+                            f"Richiesta: {prompt}"
+                        )
+
+                    elif request_type == "edit":
+                        context = request["text"]
+                        prompt = request["prompt"]
+                    
+                        user_input = (
+                            "Modifica il testo seguendo la richiesta.\n"
+                            "Rispondi SOLTANTO con il testo finale che deve sostituire "
+                            "quello originale.\n"
+                            "Non usare markdown, code fence o spiegazioni esterne.\n"
+                            "Puoi aggiungere commenti direttamente nel codice quando "
+                            "sono utili a chiarire le modifiche.\n\n"
+                            f"TESTO:\n{context}\n\n"
+                            f"RICHIESTA:\n{prompt}"
+                        )
+    
+                    elif request_type == "file":
+                        path = Path(request["path"]).expanduser()
+                        prompt = request.get(
+                            "prompt",
+                            "Analizza questo file."
+                        )
+    
+                        if not path.exists():
+                            print(
+                                f"File non trovato: {path}",
+                                file=sys.stderr,
+                            )
+                            continue
+    
+                        kind, data = prepare_file(path.resolve())
+    
+                        if kind == "attachment":
+                            files.append(data)
+                            user_input = prompt
+                        else:
+                            user_input = (
+                                f"File: {path}\n\n"
+                                f"```text\n{data}\n```\n\n"
+                                f"Richiesta: {prompt}"
+                            )
+    
+                    elif request_type == "clear":
+                        messages.clear()
+                        save_session(session, messages)
+                        continue
+    
+                    else:
+                        print(
+                            f"Tipo richiesta sconosciuto: {request_type}",
+                            file=sys.stderr,
+                        )
+                        continue
+    
+                else:
+                    user_input = input("> ")
+    
+            except EOFError:
+                if not args.pipe:
+                    print()
+                break
+    
+            if user_input.strip() == "/exit":
+                break
+    
+            if user_input.strip() == "/clear":
+                messages.clear()
+                save_session(session, messages)
+                print("Chat cleared\n")
+                continue
+    
+            if not user_input.strip():
+                continue
+
+            # File allegato solo a questo turno
+            files = []
+
+            # /file senza argomenti -> fzf
+            if user_input.strip() == "/file":
+                result = subprocess.run(
+                    ["fzf"],
+                    input=find_files(),
+                    text=True,
+                    capture_output=True,
+                )
+
+                if result.returncode != 0:
+                    continue
+
+                path = Path(result.stdout.strip()).resolve()
+                files.append(str(path))
+
+                print(f"File: {path}")
+
+                user_input = input("Prompt: ").strip()
+
+                if not user_input:
+                    user_input = "Analizza questo file."
+
+            # /file <path> <prompt> -> manuale
+            elif user_input.startswith("/file "):
+                parts = user_input[6:].strip().split(maxsplit=1)
+                path = Path(parts[0]).expanduser()
+
+                if not path.exists():
+                    print(f"File non trovato: {path}\n")
+                    continue
+
+                kind, data = prepare_file(path.resolve())
+                
+                if kind == "attachment":
+                    files.append(data)
+                
+                else:
+                    user_input = (
+                        f"File: {path}\n\n"
+                        f"```text\n{data}\n```\n\n"
+                        f"{user_input}"
+                    )
+
+                if len(parts) > 1:
+                    user_input = parts[1]
+                else:
+                    user_input = "Analizza questo file."
+
+            messages.append(
+                {
+                    "role": "user",
+                    "content": user_input,
+                }
+            )
+
+            transcript = make_transcript(messages)
+
+            command = ["llm"]
+
+            if args.model:
+                command += ["-m", args.model]
+
+            if args.reasoning:
+                command += ["-r", args.reasoning]
+
+            for path in files:
+                command += ["-f", path]
+
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+            )
+
+            process.stdin.write(transcript)
+            process.stdin.close()
+
+            response = []
+            if not args.pipe:
+                print()
+
+            while True:
+                char = process.stdout.read(1)
+
+                if not char:
+                    break
+
+                print(char, end="", flush=True)
+                response.append(char)
+
+            process.wait()
+
+            answer = "".join(response).strip()
+
+            if process.returncode != 0:
+                print("\nllm failed", file=sys.stderr)
+                messages.pop()
+                continue
+
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer,
+                }
+            )
+
+            save_session(session, messages)
+            if not args.pipe:
+                print("\n")
+
+    finally:
+        if not messages:
+            session.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    main()

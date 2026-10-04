@@ -6,3 +6,5 @@ end
 require("config.options")
 require("config.external_changes").setup()
 require("config.lazy")
+require("chat")
+require("config.keymaps")

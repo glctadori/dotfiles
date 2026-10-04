@@ -30,43 +30,82 @@ return {
       vim.cmd.colorscheme("everforest")
     end,
   },
-  { "nvim-mini/mini.icons", opts = {} },
-{
-  "olimorris/codecompanion.nvim",
-  version = "^19.0.0",
-  cmd = { "CodeCompanion", "CodeCompanionChat", "CodeCompanionActions", "CodeCompanionCodeReview" },
-  dependencies = { "nvim-lua/plenary.nvim", "nvim-treesitter/nvim-treesitter" },
-  opts = {
-    adapters = {
-      http = {
-        openrouter = function()
-          return require("codecompanion.adapters").extend("openrouter", {
-            env = {
-              api_key = "cmd:pass show api/openrouter",
-            },
-            schema = {
-              model = {
-                default = "deepseek/deepseek-v4.1-flash",
+  -- { "nvim-mini/mini.icons", opts = {} },
+  {
+    "echasnovski/mini.nvim",
+    version = false,
+    config = function()
+      require("mini.icons").setup()
+
+      local statusline = require("mini.statusline")
+
+      statusline.setup({
+        content = {
+          active = function()
+            local mode, mode_hl = statusline.section_mode({ trunc_width = 120 })
+            local git = statusline.section_git({ trunc_width = 75 })
+            local filename = statusline.section_filename({ trunc_width = 140 })
+            local location = statusline.section_location({ trunc_width = 75 })
+
+            local icon = ""
+            local name = vim.api.nvim_buf_get_name(0)
+
+            if name ~= "" then
+              local ext = vim.fn.fnamemodify(name, ":e")
+              local file_icon = MiniIcons.get("extension", ext)
+              icon = file_icon and (file_icon .. " ") or ""
+            end
+
+            local modified = vim.bo.modified and " ●" or ""
+
+            local ai = ""
+            if vim.g.ai_status and vim.g.ai_status ~= "" then
+              ai = "✦ " .. vim.g.ai_status
+            end
+
+            return statusline.combine_groups({
+              {
+                hl = mode_hl,
+                strings = { mode },
               },
-            },
-          })
-        end,
-      },
-    },
-    interactions = {
-      chat = { adapter = "openrouter" },
-      inline = { adapter = "openrouter" },
-      cmd = { adapter = "openrouter" },
-      background = { adapter = "openrouter" },
-    },
+
+              "%<",
+
+              {
+                hl = "MiniStatuslineFilename",
+                strings = {
+                  icon .. filename .. modified,
+                },
+              },
+
+              {
+                hl = "MiniStatuslineDevinfo",
+                strings = { git },
+              },
+
+              "%=",
+
+              {
+                hl = "MiniStatuslineDevinfo",
+                strings = { ai },
+              },
+
+              {
+                hl = "MiniStatuslineFileinfo",
+                strings = { location },
+              },
+            })
+          end,
+        },
+      })
+
+      -- Una sola statusline anche con split/chat
+      vim.opt.laststatus = 3
+
+      -- Mini mostra già la modalità
+      vim.opt.showmode = false
+    end,
   },
-  keys = {
-    { "<leader>aa", "<cmd>CodeCompanionActions<cr>", mode = { "n", "v" }, desc = "AI actions" },
-    { "<leader>ac", "<cmd>CodeCompanionChat Toggle<cr>", mode = { "n", "v" }, desc = "Toggle AI chat" },
-    { "<leader>as", "<cmd>CodeCompanionChat Add<cr>", mode = "v", desc = "Add selection to AI chat" },
-    { "<leader>ar", "<cmd>CodeCompanionCodeReview<cr>", desc = "Review AI changes" },
-  },
-},
   {
     "folke/snacks.nvim",
     lazy = false,
@@ -81,6 +120,8 @@ return {
       picker = { enabled = true, hidden = true, sources = { files = { hidden = true } } },
       explorer = { enabled = true },
       image = { enabled = true, doc = { inline = true } },
+      input = { enabled = true },
+      notifier = { enabled = true },
     },
     config = function(_, opts)
       local snacks = require("snacks")
@@ -160,7 +201,11 @@ return {
     dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-mini/mini.icons" },
     opts = {
       file_types = { "markdown", "markdown.mdx", "vimwiki", "codecompanion" },
-      latex = { enabled = true, converter = { "latex2text" } },
+      latex = {
+        enabled = false,
+        --   converter = { "utftex", "latex2text" },
+        --   -- position = "above",
+      },
       heading = { sign = false },
       code = { sign = false, width = "block", right_pad = 1 },
     },
@@ -222,6 +267,19 @@ return {
     },
   },
   {
+    "jbyuki/nabla.nvim",
+    ft = { "markdown", "markdown.mdx", "vimwiki", "codecompanion" },
+    keys = {
+      {
+        "<leader>un",
+        function()
+          require("nabla").toggle_virt()
+        end,
+        desc = "Toggle LaTeX rendering",
+      },
+    },
+  },
+  {
     "neovim/nvim-lspconfig",
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
@@ -235,5 +293,20 @@ return {
         automatic_enable = { "pyright", "ruff", "clangd", "bashls", "lua_ls", "marksman" },
       })
     end,
+  },
+  {
+    "NeogitOrg/neogit",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+    },
+    cmd = "Neogit",
+    keys = {
+      {
+        "<leader>gg",
+        "<cmd>Neogit<cr>",
+        desc = "Git",
+      },
+    },
+    opts = {},
   },
 }
