@@ -1,0 +1,159 @@
+#!/bin/sh
+
+set -eu
+
+state_dir=/var/lib/web-filter
+request_file=$state_dir/removal-requested-at
+cooldown=86400
+
+usage() {
+    echo 'usage: web-filter {status|update|request-removal|cancel-removal|remove}' >&2
+    exit 2
+}
+
+need_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        echo 'web-filter: questo comando richiede sudo.' >&2
+        exit 1
+    fi
+}
+
+remove_firewall_rules() {
+    while :; do
+        number=$(ufw status numbered 2>/dev/null | awk '
+            /web-filter-dns/ {
+                value = $0
+                sub(/^\[[[:space:]]*/, "", value)
+                sub(/\].*$/, "", value)
+                gsub(/[[:space:]]/, "", value)
+                if (value != "") last = value
+            }
+            END { print last }
+        ')
+        [ -n "$number" ] || break
+        ufw --force delete "$number" >/dev/null
+    done
+}
+
+add_firewall_rules() {
+    # UFW non accetta "insert 1" quando non esiste ancora alcuna regola.
+    # Creare prima i blocchi garantisce una posizione valida; le eccezioni
+    # bootstrap vengono poi inserite davanti ai blocchi.
+    if ! ufw status 2>/dev/null | grep -q 'web-filter-dns-53'; then
+        ufw deny out 53 comment web-filter-dns-53 >/dev/null
+    fi
+    if ! ufw status 2>/dev/null | grep -q 'web-filter-dns-853'; then
+        ufw deny out 853 comment web-filter-dns-853 >/dev/null
+    fi
+    if ! ufw status 2>/dev/null | grep -q 'web-filter-dns-bootstrap-1'; then
+        ufw insert 1 allow out to 185.228.168.168 port 53 \
+            comment web-filter-dns-bootstrap-1 >/dev/null
+    fi
+    if ! ufw status 2>/dev/null | grep -q 'web-filter-dns-bootstrap-2'; then
+        ufw insert 1 allow out to 185.228.169.168 port 53 \
+            comment web-filter-dns-bootstrap-2 >/dev/null
+    fi
+}
+
+case ${1:-} in
+status)
+    if systemctl is-active --quiet dnscrypt-proxy.service 2>/dev/null; then
+        echo 'DNS cifrato: attivo'
+    else
+        echo 'DNS cifrato: non attivo'
+    fi
+    if systemctl is-active --quiet web-filter-update.timer 2>/dev/null; then
+        echo 'Aggiornamenti: attivi'
+    else
+        echo 'Aggiornamenti: non attivi'
+    fi
+    if [ -r "$state_dir/last-successful-update" ]; then
+        printf 'Ultimo aggiornamento: '
+        cat "$state_dir/last-successful-update"
+    fi
+    if [ -r /etc/web-filter/blocked-names.txt ]; then
+        printf 'Domini locali: '
+        grep -c '^[^#]' /etc/web-filter/blocked-names.txt || true
+    fi
+    if [ -r "$request_file" ]; then
+        requested=$(cat "$request_file")
+        available=$((requested + cooldown))
+        printf 'Rimozione disponibile da: '
+        date --date="@$available" --iso-8601=seconds
+    else
+        echo 'Rimozione: non richiesta'
+    fi
+    ;;
+update)
+    need_root
+    exec /usr/local/libexec/web-filter-update
+    ;;
+request-removal)
+    need_root
+    mkdir -p "$state_dir"
+    if [ ! -e "$request_file" ]; then
+        date +%s >"$request_file"
+        chmod 0600 "$request_file"
+    fi
+    requested=$(cat "$request_file")
+    available=$((requested + cooldown))
+    printf 'web-filter: rimozione disponibile da %s.\n' \
+        "$(date --date="@$available" --iso-8601=seconds)"
+    ;;
+cancel-removal)
+    need_root
+    rm -f -- "$request_file"
+    echo 'web-filter: richiesta di rimozione annullata.'
+    ;;
+_activate)
+    need_root
+    remove_firewall_rules
+    add_firewall_rules
+    systemctl disable --now dnscrypt-proxy.socket >/dev/null 2>&1 || true
+    systemctl daemon-reload
+    systemctl enable dnscrypt-proxy.service
+    systemctl restart dnscrypt-proxy.service
+    systemctl restart systemd-resolved.service
+    systemctl enable --now web-filter-update.timer
+    rm -f -- "$request_file"
+    echo 'web-filter: protezione attiva.'
+    ;;
+remove)
+    need_root
+    if [ ! -r "$request_file" ]; then
+        echo 'web-filter: eseguire prima: sudo web-filter request-removal' >&2
+        exit 1
+    fi
+    requested=$(cat "$request_file")
+    now=$(date +%s)
+    available=$((requested + cooldown))
+    if [ "$now" -lt "$available" ]; then
+        echo "web-filter: cooldown non concluso; riprovare dopo $(date --date="@$available" --iso-8601=seconds)." >&2
+        exit 1
+    fi
+
+    remove_firewall_rules
+    rm -f -- /etc/systemd/resolved.conf.d/90-web-filter.conf
+    systemctl restart systemd-resolved.service
+    systemctl disable --now web-filter-update.timer >/dev/null 2>&1 || true
+    systemctl stop dnscrypt-proxy.service >/dev/null 2>&1 || true
+    rm -f -- /etc/systemd/system/web-filter-update.service \
+        /etc/systemd/system/web-filter-update.timer \
+        /etc/brave/policies/managed/dotfiles-web-filter.json \
+        /etc/chromium/policies/managed/dotfiles-web-filter.json \
+        /usr/local/libexec/web-filter-update
+    if [ -e "$state_dir/dnscrypt-proxy.toml.original" ]; then
+        install -o root -g root -m 0644 \
+            "$state_dir/dnscrypt-proxy.toml.original" \
+            /etc/dnscrypt-proxy/dnscrypt-proxy.toml
+    fi
+    rm -rf -- /etc/web-filter
+    systemctl daemon-reload
+    echo 'web-filter: protezione rimossa; dnscrypt-proxy resta installato ma inattivo.'
+    rm -rf -- "$state_dir"
+    rm -f -- /usr/local/sbin/web-filter
+    ;;
+*)
+    usage
+    ;;
+esac

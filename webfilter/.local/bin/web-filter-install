@@ -1,0 +1,73 @@
+#!/bin/sh
+
+set -eu
+
+script_path=$(readlink -f "$0")
+source_dir=$(dirname "$script_path")/../../.config/web-filter
+source_dir=$(readlink -f "$source_dir")
+state_dir=/var/lib/web-filter
+
+as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+[ "${1:-install}" = install ] || {
+    echo 'usage: web-filter-install install' >&2
+    exit 2
+}
+
+for dependency in dnscrypt-proxy jq curl ufw; do
+    command -v "$dependency" >/dev/null 2>&1 || {
+        echo "web-filter: installare prima $dependency con: sudo apt install -S $dependency" >&2
+        exit 1
+    }
+done
+jq -e . "$source_dir/browser-policy.json" >/dev/null
+
+as_root install -d -o root -g root -m 0755 \
+    /etc/web-filter /etc/systemd/resolved.conf.d \
+    /etc/brave/policies/managed /etc/chromium/policies/managed \
+    /usr/local/libexec /usr/local/sbin "$state_dir"
+
+if ! as_root test -e "$state_dir/dnscrypt-proxy.toml.original"; then
+    as_root cp -a -- /etc/dnscrypt-proxy/dnscrypt-proxy.toml \
+        "$state_dir/dnscrypt-proxy.toml.original"
+    as_root chmod 0600 "$state_dir/dnscrypt-proxy.toml.original"
+fi
+
+as_root install -o root -g root -m 0644 \
+    "$source_dir/dnscrypt-proxy.toml" /etc/dnscrypt-proxy/dnscrypt-proxy.toml
+as_root install -o root -g root -m 0644 \
+    "$source_dir/resolved.conf" /etc/systemd/resolved.conf.d/90-web-filter.conf
+as_root install -o root -g root -m 0644 \
+    "$source_dir/browser-policy.json" /etc/brave/policies/managed/dotfiles-web-filter.json
+as_root install -o root -g root -m 0644 \
+    "$source_dir/browser-policy.json" /etc/chromium/policies/managed/dotfiles-web-filter.json
+as_root install -o root -g root -m 0755 \
+    "$source_dir/web-filter-update" /usr/local/libexec/web-filter-update
+as_root install -o root -g root -m 0755 \
+    "$source_dir/web-filter-control" /usr/local/sbin/web-filter
+as_root install -o root -g root -m 0644 \
+    "$source_dir/web-filter-update.service" /etc/systemd/system/web-filter-update.service
+as_root install -o root -g root -m 0644 \
+    "$source_dir/web-filter-update.timer" /etc/systemd/system/web-filter-update.timer
+
+if ! as_root test -e /etc/web-filter/allowed-names.txt; then
+    as_root install -o root -g root -m 0644 \
+        "$source_dir/allowed-names.txt" /etc/web-filter/allowed-names.txt
+fi
+if ! as_root test -e /etc/web-filter/denied-names.txt; then
+    as_root install -o root -g root -m 0644 \
+        "$source_dir/denied-names.txt" /etc/web-filter/denied-names.txt
+fi
+
+as_root touch "$state_dir/installed"
+as_root chmod 0600 "$state_dir/installed"
+as_root /usr/local/libexec/web-filter-update
+as_root /usr/local/sbin/web-filter _activate
+
+echo 'web-filter: installazione completata. Riavviare Brave e Chromium.'

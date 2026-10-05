@@ -1,0 +1,44 @@
+server_names = ['cleanbrowsing-family']
+listen_addresses = []
+max_clients = 250
+
+ipv4_servers = true
+ipv6_servers = false
+dnscrypt_servers = false
+doh_servers = true
+odoh_servers = false
+require_dnssec = false
+require_nolog = false
+require_nofilter = false
+disabled_server_names = []
+
+force_tcp = false
+http3 = false
+timeout = 5000
+keepalive = 30
+ignore_system_dns = true
+bootstrap_resolvers = ['185.228.168.168:53', '185.228.169.168:53']
+netprobe_timeout = 60
+netprobe_address = '185.228.168.10:443'
+
+block_ipv6 = false
+block_unqualified = false
+block_undelegated = true
+reject_ttl = 60
+blocked_query_response = 'refused'
+
+cache = true
+cache_size = 4096
+cache_min_ttl = 60
+cache_max_ttl = 3600
+cache_neg_min_ttl = 10
+cache_neg_max_ttl = 60
+
+[blocked_names]
+blocked_names_file = '/etc/web-filter/blocked-names.txt'
+
+[allowed_names]
+allowed_names_file = '/etc/web-filter/allowed-names.txt'
+
+[static.'cleanbrowsing-family']
+stamp = 'sdns://AgMAAAAAAAAAAAAVZG9oLmNsZWFuYnJvd3Npbmcub3JnEy9kb2gvZmFtaWx5LWZpbHRlci8'

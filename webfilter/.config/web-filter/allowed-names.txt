@@ -1,0 +1,2 @@
+# Eccezioni alle sole liste locali. Una voce per riga, senza schema URL.
+# Le categorie bloccate direttamente da CleanBrowsing non sono sovrascrivibili.

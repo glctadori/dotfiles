@@ -1,0 +1,8 @@
+[Unit]
+Description=Aggiorna le blocklist del filtro web
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/web-filter-update

@@ -1,0 +1,121 @@
+#!/bin/sh
+
+set -eu
+
+state_dir=/var/lib/web-filter
+config_dir=/etc/web-filter
+destination=$config_dir/blocked-names.txt
+temporary=$(mktemp -d "$state_dir/update.XXXXXX")
+trap 'rm -rf -- "$temporary"' EXIT HUP INT TERM
+
+normalize() {
+    awk '
+    function emit(domain) {
+        gsub(/^\|\|/, "", domain)
+        gsub(/^\*\./, "", domain)
+        sub(/\^.*/, "", domain)
+        sub(/^https?:\/\//, "", domain)
+        sub(/\/.*/, "", domain)
+        sub(/\.$/, "", domain)
+        domain = tolower(domain)
+        if (domain ~ /^[a-z0-9_][a-z0-9_.-]*\.[a-z][a-z0-9-]*$/ &&
+            domain !~ /\.\./ && domain !~ /^-/ && domain !~ /-$/) {
+            print domain
+        }
+    }
+    /^[[:space:]]*($|#|!|@@)/ { next }
+    {
+        sub(/\r$/, "")
+        sub(/[[:space:]]+#.*/, "")
+        count = split($0, fields, /[[:space:]]+/)
+        if (fields[1] ~ /^(0\.0\.0\.0|127\.0\.0\.1|::1)$/ && count >= 2) {
+            emit(fields[2])
+        } else {
+            emit(fields[1])
+        }
+    }
+    ' "$1"
+}
+
+fetch() {
+    name=$1
+    minimum=$2
+    url=$3
+    raw=$temporary/$name.raw
+    normalized=$temporary/$name.domains
+
+    curl --fail --silent --show-error --location \
+        --retry 3 --connect-timeout 15 --max-time 180 \
+        "$url" -o "$raw"
+    normalize "$raw" | LC_ALL=C sort -u >"$normalized"
+    entries=$(wc -l <"$normalized")
+    if [ "$entries" -lt "$minimum" ]; then
+        echo "web-filter: $name contiene solo $entries domini (minimo $minimum)." >&2
+        exit 1
+    fi
+    echo "web-filter: $name: $entries domini"
+}
+
+mkdir -p "$state_dir" "$config_dir"
+
+fetch stevenblack 100000 \
+    https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-porn/hosts
+fetch hagezi-nsfw 50000 \
+    https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/nsfw-onlydomains.txt
+fetch hagezi-gambling 5000 \
+    https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/gambling-onlydomains.txt
+fetch hagezi-bypass 10000 \
+    https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/doh-vpn-proxy-bypass-onlydomains.txt
+fetch dating 100 \
+    https://raw.githubusercontent.com/ShadowWhisperer/BlockLists/master/Lists/Dating
+
+if [ -r "$config_dir/denied-names.txt" ]; then
+    normalize "$config_dir/denied-names.txt" >"$temporary/local-deny.domains"
+else
+    : >"$temporary/local-deny.domains"
+fi
+
+{
+    echo '# Generato automaticamente da web-filter-update.'
+    echo '# Modificare /etc/web-filter/denied-names.txt per i blocchi manuali.'
+    cat "$temporary"/*.domains
+} | LC_ALL=C sort -u >"$temporary/blocked-names.txt"
+
+entries=$(grep -c '^[^#]' "$temporary/blocked-names.txt" || true)
+if [ "$entries" -lt 150000 ]; then
+    echo "web-filter: lista combinata troppo corta: $entries domini." >&2
+    exit 1
+fi
+
+if [ -e "$destination" ]; then
+    cp -a -- "$destination" "$temporary/blocked-names.previous"
+fi
+install -o root -g root -m 0644 "$temporary/blocked-names.txt" "$destination"
+
+if ! dnscrypt-proxy -check -config /etc/dnscrypt-proxy/dnscrypt-proxy.toml; then
+    if [ -e "$temporary/blocked-names.previous" ]; then
+        install -o root -g root -m 0644 \
+            "$temporary/blocked-names.previous" "$destination"
+    else
+        rm -f -- "$destination"
+    fi
+    echo 'web-filter: configurazione non valida; ripristinata la lista precedente.' >&2
+    exit 1
+fi
+
+date --iso-8601=seconds >"$state_dir/last-successful-update"
+chmod 0644 "$state_dir/last-successful-update"
+
+if systemctl is-active --quiet dnscrypt-proxy.service; then
+    if ! systemctl restart dnscrypt-proxy.service; then
+        if [ -e "$temporary/blocked-names.previous" ]; then
+            install -o root -g root -m 0644 \
+                "$temporary/blocked-names.previous" "$destination"
+            systemctl restart dnscrypt-proxy.service || true
+        fi
+        echo 'web-filter: riavvio fallito; ripristinata la lista precedente.' >&2
+        exit 1
+    fi
+fi
+
+echo "web-filter: aggiornamento completato ($entries domini)."

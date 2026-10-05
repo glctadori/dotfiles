@@ -1,0 +1,1 @@
+# Blocchi locali aggiuntivi. Una voce per riga, senza schema URL.

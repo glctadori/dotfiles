@@ -1,0 +1,32 @@
+{
+  "BrowserAddPersonEnabled": false,
+  "BrowserGuestModeEnabled": false,
+  "DnsOverHttpsMode": "off",
+  "ExtensionSettings": {
+    "*": {
+      "blocked_permissions": ["proxy"],
+      "installation_mode": "allowed"
+    },
+    "amhpgjbcfakkmkeojmoaoiochhifohdi": { "installation_mode": "normal_installed" },
+    "bgpiichlckmfanooecilcjemknkcpngb": { "installation_mode": "normal_installed" },
+    "dedjgknigfeelejglamclffonmophnfl": { "installation_mode": "normal_installed" },
+    "dbepggeogbaibhgnhhndojpepiihcmeb": {
+      "installation_mode": "normal_installed",
+      "toolbar_pin": "default_unpinned",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    },
+    "edibdbjcniadpccecjdfdjjppcpchdlm": {
+      "installation_mode": "normal_installed",
+      "toolbar_pin": "default_unpinned",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    },
+    "khncfooichmfjbepaaaebmommgaepoid": {
+      "installation_mode": "normal_installed",
+      "toolbar_pin": "default_unpinned",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    }
+  },
+  "IncognitoModeAvailability": 1,
+  "ProxyMode": "direct",
+  "TorDisabled": true
+}
