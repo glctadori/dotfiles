@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v pi >/dev/null 2>&1; then
+    curl -fsSL https://pi.dev/install.sh | sh
+fi
+
+if ! command -v pio >/dev/null 2>&1; then
+    pipx install platformio
+fi

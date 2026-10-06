@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+xdg-user-dirs-update
+systemctl --user daemon-reload
+systemctl --user enable --now mpd.service
+update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+
+# Enable the user timers supplied by the systemd Stow package when present.
+for unit in \
+    backup-b2.timer backup-hdd.timer prune-b2.timer prune-hdd.timer \
+    newsboat-refresh.timer projects-auto-push.timer; do
+    if systemctl --user cat "$unit" >/dev/null 2>&1; then
+        systemctl --user enable --now "$unit"
+    fi
+done

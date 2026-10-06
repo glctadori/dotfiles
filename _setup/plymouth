@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+GRUB=/etc/default/grub
+THEME=/usr/share/plymouth/themes/spinner/spinner.plymouth
+PARAMS='quiet splash loglevel=2 rd.systemd.show_status=false vt.global_cursor_default=0'
+
+echo "==> Installo Plymouth"
+sudo apt update
+sudo apt install -y plymouth plymouth-themes
+
+echo "==> Backup GRUB"
+if [[ ! -f "${GRUB}.bak" ]]; then
+    sudo cp -a "$GRUB" "${GRUB}.bak"
+fi
+
+echo "==> Configuro silent boot"
+sudo sed -i \
+    "s|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT=\"$PARAMS\"|" \
+    "$GRUB"
+
+echo "==> Applico palette Everforest a Plymouth"
+
+sudo sed -i \
+    -e 's/^BackgroundStartColor=.*/BackgroundStartColor=0x2d353b/' \
+    -e 's/^BackgroundEndColor=.*/BackgroundEndColor=0x2d353b/' \
+    -e 's/^ProgressBarBackgroundColor=.*/ProgressBarBackgroundColor=0x475258/' \
+    -e 's/^ProgressBarForegroundColor=.*/ProgressBarForegroundColor=0xa7c080/' \
+    "$THEME"
+
+echo "==> Seleziono spinner"
+sudo update-alternatives --set default.plymouth "$THEME"
+
+echo "==> Aggiorno GRUB"
+sudo update-grub
+
+echo "==> Rigenero initramfs"
+sudo update-initramfs -u
+
+echo
+echo "Plymouth configurato:"
+echo "  tema: spinner"
+echo "  background: #2d353b"
+echo "  accent: #a7c080"
+echo
+echo "Riavvia con:"
+echo "  systemctl reboot"

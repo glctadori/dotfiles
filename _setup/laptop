@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sudo usermod -aG video "$USER"
+sudo systemctl enable --now tlp.service thermald.service
+
+sudo sed -i \
+  '/^[[:space:]#]*START_CHARGE_THRESH_BAT1=/d;
+   /^[[:space:]#]*STOP_CHARGE_THRESH_BAT1=/d;
+   /^[[:space:]#]*USB_AUTOSUSPEND=/d' /etc/tlp.conf
+printf '\nSTART_CHARGE_THRESH_BAT1=75\nSTOP_CHARGE_THRESH_BAT1=80\nUSB_AUTOSUSPEND=0\n' | \
+    sudo tee -a /etc/tlp.conf >/dev/null
+sudo tlp start
+
+sudo tee /etc/udev/rules.d/90-usb-wakeup.rules >/dev/null <<'EOF2'
+# Enable wake-up for USB devices, hubs and root hubs.
+ACTION=="add|change", SUBSYSTEM=="usb", TEST=="power/wakeup", ATTR{power/wakeup}="enabled"
+EOF2
+sudo udevadm control --reload-rules
+sudo udevadm trigger --subsystem-match=usb

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sudo systemctl enable --now NetworkManager
+
+if command -v web-filter-install >/dev/null 2>&1; then
+    sudo web-filter-install
+fi

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sudo systemctl disable --now snapd.socket snapd.service 2>/dev/null || true
+sudo apt purge -y snapd 2>/dev/null || true
+sudo apt autoremove --purge -y
+
+sudo tee /etc/apt/preferences.d/no-snapd.pref >/dev/null <<'PREF'
+Package: snapd
+Pin: release *
+Pin-Priority: -10
+PREF
+
+sudo touch /etc/cloud/cloud-init.disabled
+sudo systemctl mask systemd-networkd-wait-online.service
+
+# Mozilla repository
+sudo install -d -m 0755 /etc/apt/keyrings
+wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- | \
+    sudo tee /etc/apt/keyrings/packages.mozilla.org.asc >/dev/null
+sudo tee /etc/apt/sources.list.d/mozilla.sources >/dev/null <<'EOF2'
+Types: deb
+URIs: https://packages.mozilla.org/apt
+Suites: mozilla
+Components: main
+Signed-By: /etc/apt/keyrings/packages.mozilla.org.asc
+EOF2
+sudo tee /etc/apt/preferences.d/mozilla >/dev/null <<'EOF2'
+Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000
+
+Package: firefox
+Pin: release o=Ubuntu
+Pin-Priority: -1
+EOF2
+
+# Yazi repository
+curl -fsSL https://yazi-rs.github.io/builds/yazi-keyring.gpg | \
+    sudo tee /usr/share/keyrings/yazi-keyring.gpg >/dev/null
+echo 'deb [signed-by=/usr/share/keyrings/yazi-keyring.gpg] https://yazi-rs.github.io/builds/ stable main' | \
+    sudo tee /etc/apt/sources.list.d/yazi.list >/dev/null
+
+sudo apt update
+sudo apt install -y \
+    sway kitty mako-notifier libnotify-bin pipewire pipewire-pulse wireplumber \
+    neovim pass stow build-essential udiskie tree-sitter-cli xdg-desktop-portal \
+    mesa-utils vainfo intel-media-va-driver-non-free restic mpv intel-gpu-tools \
+    network-manager keyd lazygit unzip hyprland hyprpolkitagent hyprland-qtutils \
+    hyprpaper mpd ncmpcpp mpc dnscrypt-proxy zsh zsh-syntax-highlighting \
+    trash-cli fontconfig fonts-inter fonts-noto-core fonts-noto-color-emoji \
+    zathura zathura-pdf-poppler hyprlock hypridle apparmor-utils \
+    libcanberra-gtk3-module sound-theme-freedesktop rfkill starship socat flatpak \
+    newsboat pulsemixer tlp thermald btm ripgrep fd-find isync msmtp neomutt \
+    yazi cups smartmontools nvme-cli fwupd libreoffice pipx python3-venv \
+    plymouth-themes firefox jq xdg-user-dirs desktop-file-utils
+
+flatpak remote-add --if-not-exists flathub \
+    https://flathub.org/repo/flathub.flatpakrepo
+flatpak install -y flathub \
+    md.obsidian.Obsidian \
+    org.freecad.FreeCAD \
+    org.localsend.localsend_app \
+    com.orcaslicer.OrcaSlicer
+
+sudo tee /etc/keyd/default.conf >/dev/null <<'EOF2'
+[ids]
+*
+
+[main]
+capslock = overload(control, esc)
+EOF2
+sudo systemctl enable --now keyd NetworkManager
+
+git config --global user.email "glctadori@gmail.com"
+git config --global user.name "Gianluca"
