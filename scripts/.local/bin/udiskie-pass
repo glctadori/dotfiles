@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+printf '%q ' "$@" >> /tmp/udiskie-pass-args
+printf '\n' >> /tmp/udiskie-pass-args
+
+exit 1

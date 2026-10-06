@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=NeoMutt
+Comment=Terminal mail client
+Exec=kitty -e neomutt %u
+Terminal=false
+Type=Application
+MimeType=x-scheme-handler/mailto;message/rfc822;
+Categories=Network;Email;

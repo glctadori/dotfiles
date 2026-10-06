@@ -1,0 +1,14 @@
+program_options:
+  automount: true
+  notify: true
+  tray: false
+  password_prompt: ["pass", "show", "disk/luks-hdd"]
+  password_cache: 0
+  file_manager: "kitty -e yazi"
+
+notifications:
+  timeout: 5
+  device_mounted: 5
+  device_unmounted: 3
+  device_unlocked: 5
+  device_locked: 3

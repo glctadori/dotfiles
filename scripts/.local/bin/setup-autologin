@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+USER_NAME="gian"
+GETTY_DIR="/etc/systemd/system/getty@tty1.service.d"
+GETTY_FILE="$GETTY_DIR/autologin.conf"
+
+echo "==> Configuro autologin su tty1"
+
+sudo mkdir -p "$GETTY_DIR"
+
+sudo tee "$GETTY_FILE" >/dev/null <<EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $USER_NAME --noclear %I \$TERM
+EOF
+
+echo "==> Ricarico systemd"
+sudo systemctl daemon-reload
+
+echo
+echo "Autologin configurato per: $USER_NAME"
+echo "TTY: tty1"
+echo
+echo "Configurazione:"
+cat "$GETTY_FILE"
+
+echo
+echo "Al prossimo reboot tty1 entrerà automaticamente come $USER_NAME."

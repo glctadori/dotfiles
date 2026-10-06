@@ -1,0 +1,3 @@
+set sort_field=name
+set address_style=eu
+set show_all_emails=true

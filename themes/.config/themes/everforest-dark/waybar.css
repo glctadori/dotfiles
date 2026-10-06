@@ -1,0 +1,52 @@
+window#waybar {
+    color: #d3c6aa;
+}
+
+/* Pillole: Everforest bg */
+#workspaces,
+#mpd,
+#window,
+.modules-right {
+    background: rgba(45, 53, 59, 0.90);
+}
+
+/* Workspace inattivi */
+#workspaces button {
+    color: #859289;
+}
+
+/* Workspace attivo: niente rettangolone */
+#workspaces button.active {
+    background: transparent;
+    color: #a7c080;
+    font-weight: bold;
+}
+
+/* Urgente */
+#workspaces button.urgent {
+    background: transparent;
+    color: #e67e80;
+}
+
+#window {
+    color: #9da9a0;
+}
+
+#network,
+#custom-pomodoro,
+#custom-agent-usage,
+#custom-project,
+#custom-project-agents,
+#pulseaudio,
+#battery,
+#clock {
+    color: #d3c6aa;
+}
+
+#battery.warning {
+    color: #dbbc7f;
+}
+
+#battery.critical {
+    color: #e67e80;
+}

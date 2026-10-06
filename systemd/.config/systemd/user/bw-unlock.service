@@ -1,0 +1,14 @@
+# Run the system backup helper in the user session, without root privileges.
+[Unit]
+Description=Unlock Bitwarden CLI at graphical login
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/bw-session
+# The helper prints a secret session token: never send it to the journal.
+StandardOutput=null
+
+[Install]
+WantedBy=graphical-session.target

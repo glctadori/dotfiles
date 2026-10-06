@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="$HOME/.local/share/applications"
+ICON_DIR="$HOME/.local/share/icons/webapps"
+
+mkdir -p "$APP_DIR" "$ICON_DIR"
+
+# Input via Fuzzel
+name="$(
+    fuzzel \
+        --dmenu \
+        --prompt-only="󰣆  Webapp name: "
+)" || exit 0
+
+[[ -n "$name" ]] || exit 0
+
+url="$(
+    fuzzel \
+        --dmenu \
+        --prompt-only="󰖟  URL: "
+)" || exit 0
+
+[[ -n "$url" ]] || exit 0
+
+[[ "$url" =~ ^https?:// ]] || url="https://$url"
+
+slug="$(
+    printf '%s' "$name" |
+        tr '[:upper:]' '[:lower:]' |
+        sed 's/[^a-z0-9]/-/g; s/-\+/-/g; s/^-//; s/-$//'
+)"
+
+desktop="$APP_DIR/webapp-$slug.desktop"
+icon="$ICON_DIR/$slug.png"
+
+# Dominio per favicon
+domain="$(printf '%s' "$url" | sed -E 's#^https?://([^/]+).*#\1#')"
+
+icon_url="https://www.google.com/s2/favicons?domain=$domain&sz=256"
+
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
+if curl -fsSL "$icon_url" -o "$tmp"; then
+    if command -v magick >/dev/null 2>&1; then
+        magick "$tmp" "$icon"
+    else
+        cp "$tmp" "$icon"
+    fi
+else
+    icon="applications-internet"
+fi
+
+cat > "$desktop" <<EOF
+[Desktop Entry]
+Version=1.0
+Name=$name
+Exec=brave-browser --app="$url"
+Icon=$icon
+Terminal=false
+Type=Application
+Categories=Network;
+StartupNotify=true
+EOF
+
+chmod +x "$desktop"
+
+command -v update-desktop-database >/dev/null 2>&1 &&
+    update-desktop-database "$APP_DIR" >/dev/null 2>&1 || true
+
+notify-send \
+    --expire-time=2000 \
+    "󰣆  Webapp installed" \
+    "$name"

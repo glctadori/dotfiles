@@ -1,0 +1,66 @@
+#!/bin/sh
+
+set -eu
+
+cache_dir=${XDG_CACHE_HOME:-"$HOME/.cache"}/neomutt
+action_file="$cache_dir/action.rc"
+account=${1:-gmail}
+
+mkdir -p "$cache_dir"
+
+case $account in
+    gmail)
+        destinations='Sposta → Archivio|=[Gmail]/Tutti i messaggi
+Sposta → Posta in arrivo|=INBOX
+Sposta → Bozze|=[Gmail]/Bozze
+Sposta → Spam|=[Gmail]/Spam
+Sposta → Cestino|=[Gmail]/Cestino'
+        ;;
+    mailo)
+        destinations='Sposta → Archivio|=Archive
+Sposta → Posta in arrivo|=INBOX
+Sposta → Bozze|=draftbox
+Sposta → Spam|=unsolbox
+Sposta → Cestino|=trash'
+        ;;
+    icloud)
+        destinations='Sposta → Archivio|=Archive
+Sposta → Posta in arrivo|=INBOX
+Sposta → Bozze|=Drafts
+Sposta → Spam|=Junk
+Sposta → Cestino|=Deleted Messages'
+        ;;
+    *)
+        destinations=
+        ;;
+esac
+
+action=$(printf '%s\n%s\n' "$destinations" \
+    'Elimina' \
+    'Ripristina' \
+    'Segna come letta' \
+    'Segna come non letta' \
+    'Attiva/disattiva preferita' |
+    fzf --height=~40% --layout=reverse --border \
+        --delimiter='|' --with-nth=1 \
+        --prompt='Azione mail> ' --no-multi) || action=
+
+case $action in
+    'Sposta → '*)
+        destination=${action#*|}
+        command="<tag-prefix-cond><save-message>${destination}<enter>"
+        ;;
+    'Elimina') command='<tag-prefix-cond><delete-message>' ;;
+    'Ripristina') command='<tag-prefix-cond><undelete-message>' ;;
+    'Segna come letta') command='<tag-prefix-cond><clear-flag>N' ;;
+    'Segna come non letta') command='<tag-prefix-cond><set-flag>N' ;;
+    'Attiva/disattiva preferita') command='<tag-prefix-cond><flag-message>' ;;
+    *) command= ;;
+esac
+
+if [ -n "$command" ]; then
+    command="${command}<sync-mailbox>"
+    printf 'push "%s"\n' "$command" >"$action_file"
+else
+    printf '# Nessuna azione selezionata\n' >"$action_file"
+fi

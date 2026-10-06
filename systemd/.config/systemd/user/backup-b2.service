@@ -1,0 +1,10 @@
+# Run the system backup helper in the user session, without root privileges.
+[Unit]
+Description=Restic backup of Projects and Documents to Backblaze B2
+
+[Service]
+Type=oneshot
+Environment=BACKUP_SCHEDULED=1
+ExecStart=%h/.local/bin/backup b2 backup
+# Give interactive applications priority.
+Nice=10

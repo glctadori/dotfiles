@@ -1,0 +1,22 @@
+# Generato da theme-build; non modificare a mano.
+set default-bg "#1c1714"
+set default-fg "#e3d9c6"
+set statusbar-bg "#2a211b"
+set statusbar-fg "#e3d9c6"
+set inputbar-bg "#2a211b"
+set inputbar-fg "#8ea9c8"
+set completion-bg "#2a211b"
+set completion-fg "#e3d9c6"
+set completion-highlight-bg "#8ea9c8"
+set completion-highlight-fg "#1c1714"
+set notification-bg "#8ea9c8"
+set notification-fg "#1c1714"
+set notification-error-bg "#c2604f"
+set notification-error-fg "#e3d9c6"
+set notification-warning-bg "#c9a15a"
+set notification-warning-fg "#1c1714"
+set recolor true
+set recolor-darkcolor "#e3d9c6"
+set recolor-lightcolor "#1c1714"
+set recolor-keephue true
+set recolor-reverse-video true

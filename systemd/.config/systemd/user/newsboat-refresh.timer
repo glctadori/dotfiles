@@ -1,0 +1,12 @@
+# Refresh Newsboat shortly after login and every 15 minutes thereafter.
+# Enable with: systemctl --user enable --now newsboat-refresh.timer
+[Unit]
+Description=Refresh Newsboat feeds periodically
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,54 @@
+{
+  "PasswordManagerEnabled": false,
+  "TranslateEnabled": false,
+  "BackgroundModeEnabled": false,
+  "BraveAIChatEnabled": false,
+  "BraveNewsDisabled": true,
+  "BraveP3AEnabled": false,
+  "BraveRewardsDisabled": true,
+  "BraveStatsPingEnabled": false,
+  "BraveTalkDisabled": true,
+  "BraveVPNDisabled": true,
+  "BraveWalletDisabled": true,
+  "BraveWebDiscoveryEnabled": false,
+
+  "DefaultBrowserSettingEnabled": false,
+
+  "DefaultSearchProviderEnabled": true,
+  "DefaultSearchProviderName": "Google",
+  "DefaultSearchProviderSearchURL": "https://www.google.com/search?q={searchTerms}",
+
+  "HomepageLocation": "about:blank",
+  "HomepageIsNewTabPage": false,
+  "NewTabPageLocation": "about:blank",
+
+  "ForcedLanguages": [
+    "en-US"
+  ],
+  "SpellcheckLanguage": [
+    "it",
+    "en-US"
+  ],
+
+  "RestoreOnStartup": 5,
+
+  "ExtensionSettings": {
+    "dbepggeogbaibhgnhhndojpepiihcmeb": {
+      "installation_mode": "normal_installed",
+      "toolbar_pin": "default_unpinned",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    },
+    "edibdbjcniadpccecjdfdjjppcpchdlm": {
+      "installation_mode": "normal_installed",
+      "toolbar_pin": "default_unpinned",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    },
+    "khncfooichmfjbepaaaebmommgaepoid": {
+      "installation_mode": "normal_installed",
+      "toolbar_pin": "default_unpinned",
+      "update_url": "https://clients2.google.com/service/update2/crx"
+    }
+  },
+
+  "PromotionalTabsEnabled": false
+}

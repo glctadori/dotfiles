@@ -1,0 +1,9 @@
+#!/bin/sh
+
+mkdir -p ~/.local/share/fonts
+cd /tmp
+
+wget https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz
+tar -xf JetBrainsMono.tar.xz -C ~/.local/share/fonts
+
+fc-cache -fv

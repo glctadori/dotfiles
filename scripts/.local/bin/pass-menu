@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+store="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+
+entry="$(
+    find "$store" -type f -name '*.gpg' -printf '%P\n' |
+    sed 's/\.gpg$//' |
+    sort |
+    fuzzel --dmenu --prompt="Password: "
+)"
+
+[[ -z "$entry" ]] && exit 0
+
+data="$(pass show "$entry")"
+
+password="$(printf '%s\n' "$data" | sed -n '1p')"
+login="$(printf '%s\n' "$data" | sed -n '2p')"
+
+printf '%s' "$password" | wl-copy
+
+notify-send \
+    "Password copied" \
+    "$entry\n$login"

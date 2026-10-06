@@ -1,0 +1,9 @@
+[[opener.play-webm]]
+run    = "mpv %s"
+orphan = true
+for    = "unix"
+desc   = "Play with mpv"
+
+[[open.prepend_rules]]
+url = "*.webm"
+use = "play-webm"

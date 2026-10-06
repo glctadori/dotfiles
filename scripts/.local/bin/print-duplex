@@ -1,0 +1,348 @@
+#!/bin/sh
+# print-duplex
+# Stampa PDF con Fuzzel + Mako, incluso fronte/retro manuale.
+#
+# Dipendenze:
+#   cups
+#   poppler-utils
+#   qpdf
+#   fuzzel
+#   libnotify
+#
+# Il notification daemon previsto è Mako.
+
+set -eu
+
+die() {
+    printf 'Errore: %s\n' "$*" >&2
+
+    command -v notify-send >/dev/null 2>&1 &&
+        notify-send -u critical "Stampa" "$*" || true
+
+    exit 1
+}
+
+for command_name in lp lpstat pdfinfo qpdf fuzzel notify-send; do
+    command -v "$command_name" >/dev/null 2>&1 ||
+        die "comando mancante: $command_name"
+done
+
+menu() {
+    prompt=$1
+    shift
+
+    if [ "$#" -gt 0 ]; then
+        printf '%s\n' "$@" |
+            fuzzel --dmenu --prompt="$prompt: "
+    else
+        fuzzel --dmenu --prompt="$prompt: "
+    fi
+}
+
+choose_file() {
+    if [ "$#" -gt 0 ] && [ -n "$1" ]; then
+        printf '%s\n' "$1"
+        return
+    fi
+
+    find \
+        "$HOME/Downloads" \
+        "$HOME/Documents" \
+        -type f \
+        -iname '*.pdf' \
+        2>/dev/null |
+        fuzzel \
+            --dmenu \
+            --prompt="PDF: " \
+            --width=80
+}
+
+choose_printer() {
+    printers=$(lpstat -e 2>/dev/null || true)
+
+    [ -n "$printers" ] ||
+        die "nessuna stampante configurata in CUPS"
+
+    default_printer=$(
+        lpstat -d 2>/dev/null |
+            sed 's/.*: //' || true
+    )
+
+    if [ -n "$default_printer" ]; then
+        printf '%s\n' "$default_printer"
+        return
+    fi
+
+    printer_count=$(
+        printf '%s\n' "$printers" |
+            wc -l
+    )
+
+    if [ "$printer_count" -eq 1 ]; then
+        printf '%s\n' "$printers"
+        return
+    fi
+
+    printf '%s\n' "$printers" |
+        fuzzel \
+            --dmenu \
+            --prompt="Stampante: "
+}
+
+wait_for_queue() {
+    while lpstat -W not-completed -o "$1" 2>/dev/null |
+        grep -q .
+    do
+        sleep 2
+    done
+}
+
+#
+# Scelta PDF
+#
+
+file=$(choose_file "${1-}") || exit 0
+
+[ -f "$file" ] ||
+    die "file non trovato: $file"
+
+#
+# Modalità
+#
+
+mode=$(
+    menu \
+        "Modalità di stampa" \
+        "Fronte/retro manuale" \
+        "Solo fronte"
+) || exit 0
+
+#
+# Numero pagine
+#
+
+total_pages=$(
+    pdfinfo "$file" 2>/dev/null |
+        awk '/^Pages:/ { print $2; exit }'
+)
+
+case "$total_pages" in
+    ''|*[!0-9]*)
+        die "il file scelto non è un PDF valido"
+        ;;
+esac
+
+#
+# Scelta pagine
+#
+
+page_choice=$(
+    menu \
+        "Pagine" \
+        "Tutte (1-$total_pages)" \
+        "Scegli intervallo…"
+) || exit 0
+
+case "$page_choice" in
+    Tutte*)
+        pages="1-$total_pages"
+        ;;
+
+    *)
+        pages=$(
+            printf '' |
+                fuzzel \
+                    --dmenu \
+                    --prompt="Pagine (es. 1-5,8,12): "
+        ) || exit 0
+
+        pages=$(
+            printf '%s' "$pages" |
+                tr -d '[:space:]'
+        )
+        ;;
+esac
+
+#
+# Validazione intervallo
+#
+
+case "$pages" in
+    ''|*[!0-9,-]*|,*|*,|*-|-*|*,,*|*--*)
+        die "intervallo pagine non valido: $pages"
+        ;;
+esac
+
+old_ifs=$IFS
+IFS=,
+set -- $pages
+IFS=$old_ifs
+
+for part do
+    case "$part" in
+        *-*)
+            first=${part%-*}
+            last=${part#*-}
+            ;;
+
+        *)
+            first=$part
+            last=$part
+            ;;
+    esac
+
+    [ "$first" -ge 1 ] 2>/dev/null &&
+        [ "$last" -le "$total_pages" ] 2>/dev/null &&
+        [ "$first" -le "$last" ] 2>/dev/null ||
+        die "pagina fuori intervallo: $part (PDF: 1-$total_pages)"
+done
+
+#
+# Stampante
+#
+
+printer=$(choose_printer) || exit 0
+
+#
+# Directory temporanea
+#
+
+work_dir=$(
+    mktemp -d "${TMPDIR:-/tmp}/print-duplex.XXXXXX"
+)
+
+trap 'rm -rf -- "$work_dir"' EXIT HUP INT TERM
+
+selected_pdf="$work_dir/selected.pdf"
+front_pdf="$work_dir/front.pdf"
+back_pdf="$work_dir/back.pdf"
+
+#
+# Estrazione pagine richieste
+#
+
+qpdf \
+    --empty \
+    --pages "$file" "$pages" \
+    -- "$selected_pdf" ||
+    die "non riesco a estrarre le pagine richieste"
+
+#
+# Solo fronte
+#
+
+if [ "$mode" = "Solo fronte" ]; then
+
+    lp \
+        -d "$printer" \
+        -o sides=one-sided \
+        -o outputorder=normal \
+        -t "$(basename "$file")" \
+        -- "$selected_pdf" >/dev/null
+
+    wait_for_queue "$printer"
+
+    notify-send \
+        "Stampa completata" \
+        "$(basename "$file")"
+
+    exit 0
+fi
+
+#
+# Fronte/retro manuale
+#
+
+selected_pages=$(
+    pdfinfo "$selected_pdf" |
+        awk '/^Pages:/ { print $2; exit }'
+)
+
+front_pages=
+back_pages=
+page=1
+
+while [ "$page" -le "$selected_pages" ]; do
+
+    if [ $((page % 2)) -eq 1 ]; then
+        front_pages=${front_pages:+$front_pages,}$page
+    else
+        back_pages=${back_pages:+$back_pages,}$page
+    fi
+
+    page=$((page + 1))
+done
+
+#
+# Stampa fronte
+#
+
+qpdf \
+    --empty \
+    --pages "$selected_pdf" "$front_pages" \
+    -- "$front_pdf"
+
+lp \
+    -d "$printer" \
+    -o sides=one-sided \
+    -o outputorder=normal \
+    -t "$(basename "$file") - fronte" \
+    -- "$front_pdf" >/dev/null
+
+wait_for_queue "$printer"
+
+#
+# Se c'è una sola facciata abbiamo finito
+#
+
+if [ -z "$back_pages" ]; then
+
+    notify-send \
+        "Stampa completata" \
+        "Il documento aveva una sola facciata."
+
+    exit 0
+fi
+
+#
+# Richiesta di girare i fogli
+#
+
+notify-send \
+    -t 0 \
+    -u critical \
+    "Gira i fogli" \
+    "Capovolgi i fogli: lato stampato e testa in basso, prima pagina davanti." \
+    >/dev/null 2>&1 || true
+
+confirmation=$(
+    menu \
+        "Gira i fogli per continuare" \
+        "Stampa il retro" \
+        "Annulla"
+) || exit 0
+
+[ "$confirmation" = "Stampa il retro" ] ||
+    exit 0
+
+#
+# Stampa retro
+#
+
+qpdf \
+    --empty \
+    --pages "$selected_pdf" "$back_pages" \
+    -- "$back_pdf"
+
+lp \
+    -d "$printer" \
+    -o sides=one-sided \
+    -o outputorder=normal \
+    -t "$(basename "$file") - retro" \
+    -- "$back_pdf" >/dev/null
+
+wait_for_queue "$printer"
+
+notify-send \
+    "Stampa completata" \
+    "Fronte e retro terminati."

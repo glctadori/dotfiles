@@ -1,10 +1,16 @@
--- Small, independent editor for notes, code and files edited by external agents.
-if vim.fn.has("nvim-0.11.6") == 0 then
-  error("nvim-minimal requires Neovim 0.11.6 or newer (Ubuntu 26.04)")
-end
-
-require("config.options")
-require("config.external_changes").setup()
-require("config.lazy")
+require("options")
+require("bootstrap")
+require("terminal")
 require("chat")
-require("config.keymaps")
+require("keymaps")
+require("sudo")
+
+-- RPC socket for external commands
+local socket_dir = vim.fn.expand("~/.cache/nvim/sockets")
+vim.fn.mkdir(socket_dir, "p")
+
+local socket = socket_dir .. "/" .. vim.fn.getpid() .. ".sock"
+vim.fn.serverstart(socket)
+
+-- Carica il tema corrente definito in ~/.config/themes/current/nvim.lua
+dofile(vim.fn.expand("~/.config/themes/current/nvim.lua"))

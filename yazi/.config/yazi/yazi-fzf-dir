@@ -1,0 +1,43 @@
+#!/bin/sh
+
+set -eu
+
+action=${1:-}
+
+case "$action" in
+    jump|move|copy) ;;
+    *)
+        echo "Uso: ${0##*/} {jump|move|copy}" >&2
+        exit 2
+        ;;
+esac
+
+if ! command -v fd >/dev/null 2>&1 || ! command -v fzf >/dev/null 2>&1; then
+    echo "Errore: fd e fzf devono essere installati." >&2
+    exit 1
+fi
+
+destination=$(
+    {
+        printf '%s\n' "${HOME:?}"
+        fd --hidden --type d --exclude .git . "$HOME"
+    } | fzf --prompt='Directory > ' --height=100% --reverse
+) || exit 0
+
+[ -n "$destination" ] || exit 0
+
+case "$action" in
+    jump)
+        ya emit cd "$destination"
+        ;;
+    move)
+        ya emit yank --cut
+        ya emit cd "$destination"
+        ya emit paste
+        ;;
+    copy)
+        ya emit yank
+        ya emit cd "$destination"
+        ya emit paste
+        ;;
+esac

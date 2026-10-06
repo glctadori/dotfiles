@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Askpass helper for programs such as `sudo -A`.  The password is printed to
+# stdout, as required by the SUDO_ASKPASS protocol.
+exec fuzzel \
+    --dmenu \
+    --password \
+    --prompt-only="${1:-Password: }"

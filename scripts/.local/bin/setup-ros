@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Repository ufficiale ROS 2
+sudo apt update
+sudo apt install -y curl
+
+ROS_APT_SOURCE_VERSION="1.2.0"
+
+curl -fsSL -o /tmp/ros2-apt-source.deb \
+  "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+
+sudo apt install -y /tmp/ros2-apt-source.deb
+rm /tmp/ros2-apt-source.deb
+
+# ROS 2 Lyrical + strumenti sviluppo
+sudo apt update
+sudo apt install -y \
+  ros-lyrical-ros-base \
+  ros-dev-tools
+
+# rosdep
+sudo rosdep init 2>/dev/null || true
+rosdep update
+
+echo
+echo "ROS 2 Lyrical installato."
+echo 'Aggiungi a ~/.zshrc: source /opt/ros/lyrical/setup.zsh'

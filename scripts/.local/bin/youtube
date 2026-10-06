@@ -1,0 +1,232 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+shopt -s nullglob
+
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}/youtube-${UID}"
+queue_dir="$runtime_dir/queue"
+state_file="$runtime_dir/state.json"
+events_file="$runtime_dir/events.jsonl"
+lock_file="$runtime_dir/worker.lock"
+
+video_url() {
+    printf 'https://www.youtube.com/watch?v=%s' "$1"
+}
+
+search() {
+    local query=${1:-}
+    [[ -n "$query" ]] || return 0
+    yt-dlp \
+        "ytsearch20:$query" \
+        --flat-playlist \
+        --print '%(.{title,channel,duration_string,id})j'
+}
+
+play() {
+    [[ -n "${1:-}" ]] || return 0
+    mpv "$(video_url "$1")"
+}
+
+queued_json() {
+    local files=("$queue_dir"/*.json)
+    if (( ${#files[@]} )); then
+        jq -s '[.[].title]' "${files[@]}"
+    else
+        printf '[]\n'
+    fi
+}
+
+write_state() {
+    local active=$1 title=$2 progress=$3 eta=$4 speed=$5
+    local queued tmp
+    queued=$(queued_json)
+    tmp=$(mktemp "$runtime_dir/state.XXXXXX")
+    jq -cn \
+        --argjson active "$active" \
+        --arg title "$title" \
+        --arg progress "$progress" \
+        --arg eta "$eta" \
+        --arg speed "$speed" \
+        --argjson queued "$queued" \
+        '{active: $active, title: $title, progress: $progress, eta: $eta, speed: $speed, queued: $queued}' \
+        >"$tmp"
+    mv "$tmp" "$state_file"
+    cat "$state_file" >>"$events_file"
+}
+
+refresh_state() {
+    if [[ -r "$state_file" ]]; then
+        write_state \
+            "$(jq -r '.active' "$state_file")" \
+            "$(jq -r '.title' "$state_file")" \
+            "$(jq -r '.progress' "$state_file")" \
+            "$(jq -r '.eta' "$state_file")" \
+            "$(jq -r '.speed' "$state_file")"
+    else
+        write_state false '' '0' '' ''
+    fi
+}
+
+status() {
+    mkdir -p "$queue_dir"
+    if [[ -r "$state_file" ]]; then
+        cat "$state_file"
+    else
+        write_state false '' '0' '' ''
+        cat "$state_file"
+    fi
+}
+
+watch_status() {
+    status
+    exec tail -n 0 -F "$events_file"
+}
+
+worker() {
+    mkdir -p "$queue_dir"
+    exec 9>"$lock_file"
+    flock 9
+
+    local files item id title mode progress eta speed
+    local -a format_args
+    while true; do
+        files=("$queue_dir"/*.json)
+        (( ${#files[@]} )) || break
+        item=${files[0]}
+        id=$(jq -r '.id' "$item")
+        title=$(jq -r '.title' "$item")
+        mode=$(jq -r '.mode // "video"' "$item")
+        if [[ "$mode" == audio ]]; then
+            format_args=(-x --audio-format mp3 --audio-quality 0)
+        else
+            format_args=(-f 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best')
+        fi
+        rm -f -- "$item"
+        write_state true "$title" '0' '' ''
+
+        while IFS=$'\t' read -r progress eta speed; do
+            progress=${progress//[% ]/}
+            eta=${eta// /}
+            speed=${speed// /}
+            write_state true "$title" "${progress:-0}" "${eta:-}" "${speed:-}"
+        done < <(
+            yt-dlp \
+                --newline \
+                --progress-template $'download:%(progress._percent_str)s\t%(progress._eta_str)s\t%(progress._speed_str)s' \
+                -P "$(xdg-user-dir DOWNLOAD)" \
+                -o '%(title)s [%(id)s].%(ext)s' \
+                "${format_args[@]}" \
+                "$(video_url "$id")" 2>/dev/null || true
+        )
+        notify "Scaricato: $title"
+    done
+    write_state false '' '0' '' ''
+}
+
+enqueue() {
+    local id=${1:-} title=${2:-} mode=${3:-video}
+    [[ -n "$id" && -n "$title" ]] || return 2
+    [[ "$mode" == video || "$mode" == audio ]] || return 2
+    mkdir -p "$queue_dir"
+    local item
+    item=$(mktemp "$queue_dir/$(date +%s%N).XXXXXX.json")
+    jq -cn --arg id "$id" --arg title "$title" --arg mode "$mode" '{id: $id, title: $title, mode: $mode}' >"$item"
+    refresh_state
+    setsid "$0" worker </dev/null >/dev/null 2>&1 &
+}
+
+notify() {
+    notify-send \
+        --expire-time=2500 \
+        '󰗃  YouTube' \
+        "$1" 2>/dev/null || true
+}
+
+menu() {
+    local query results choice id title action
+
+    # Ricerca
+    query=$(
+        fuzzel \
+            --dmenu \
+            --prompt-only='󰗃  YouTube: '
+    ) || return 0
+
+    [[ -n "$query" ]] || return 0
+
+    # Cerca una volta sola e prepara le righe per Fuzzel.
+    results=$(
+        search "$query" |
+            jq -r '
+                [
+                    .title,
+                    ([.channel, .duration_string]
+                        | map(select(. != null))
+                        | join(" · ")),
+                    .id
+                ] | @tsv
+            '
+    ) || {
+        notify "Ricerca fallita"
+        return 1
+    }
+
+    [[ -n "$results" ]] || {
+        notify "Nessun risultato per “$query”"
+        return 0
+    }
+
+    # Scelta risultato
+    choice=$(
+        printf '%s\n' "$results" |
+            fuzzel \
+                --dmenu \
+                --prompt='󰗃  Risultati: ' \
+                --width=80
+    ) || return 0
+
+    [[ -n "$choice" ]] || return 0
+
+    # TSV: titolo <TAB> metadata <TAB> id
+    title=${choice%%$'\t'*}
+    id=${choice##*$'\t'}
+
+    # Azione
+    action=$(
+        printf '%s\n' \
+            '󰐊  Guarda' \
+            '󰇚  Scarica' \
+            '󰕾  Scarica audio' |
+            fuzzel \
+                --dmenu \
+                --prompt='󰏤  Azione: '
+    ) || return 0
+
+    case "$action" in
+        '󰐊  Guarda')
+            setsid "$0" play "$id" \
+                </dev/null >/dev/null 2>&1 &
+            ;;
+
+        '󰇚  Scarica')
+            enqueue "$id" "$title" video
+            notify "In download: $title"
+            ;;
+
+        '󰕾  Scarica audio')
+            enqueue "$id" "$title" audio
+            notify "In download (audio): $title"
+            ;;
+    esac
+}
+
+case "${1:-menu}" in
+    search) shift; search "$*" ;;
+    play) shift; play "${1:-}" ;;
+    enqueue) shift; enqueue "${1:-}" "${2:-}" "${3:-video}" ;;
+    status) status ;;
+    watch) watch_status ;;
+    worker) worker ;;
+    menu) menu ;;
+    *) printf 'usage: youtube [menu|search QUERY|play ID|enqueue ID TITLE [video|audio]|status|watch]\n' >&2; exit 2 ;;
+esac

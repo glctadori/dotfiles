@@ -1,0 +1,85 @@
+set mbox_type = Maildir
+
+# Cache (speeds up opening large mailboxes)
+set header_cache = "~/.cache/neomutt/headers"
+set message_cachedir = "~/.cache/neomutt/bodies"
+
+# Signature
+set signature = "~/.config/neomutt/signature"
+
+# HTML rendering
+set mailcap_path = "~/.config/neomutt/mailcap"
+auto_view text/html
+# Alcuni mittenti producono una parte text/plain malformata: preferisci la
+# conversione HTML di w3m e usa il testo semplice come ripiego.
+alternative_order text/html text/plain
+set implicit_autoview = yes
+
+# Applica subito spostamenti/eliminazioni avviati dal menu azioni.
+set delete = yes
+set confirmappend = no
+
+# Editor
+set editor = "nvim"
+
+# Display
+set sort = reverse-date
+set index_format = " %Z  %{%d %b}  %-20.20F  %s"
+set status_format = " %D  %<u? %u  >%m messaggi%<F?   %F>%> %P "
+set pager_format = " %Z  %C/%m  %-22.22F  %s%* %P "
+set compose_format = " Nuovo messaggio  %a allegati%> %l "
+# Keep the index and message views separate: `l` opens the selected message.
+set pager_index_lines = 0
+set wrap = 100
+set reflow_wrap = 100
+set reflow_text = yes
+set help = no
+set markers = no
+
+# Default account
+source ~/.config/neomutt/accounts/gmail
+
+# La navigazione tra cartelle usa il menu fzf associato a J.
+set sidebar_visible = no
+
+# Index
+bind index l display-message
+bind index h exit
+bind index g noop
+macro index gg "<first-entry>" "Vai alla prima mail"
+bind index G last-entry
+bind index r reply
+bind index m mail
+macro index <Space> "<tag-entry>" "Seleziona e passa alla mail successiva"
+
+# Pager
+bind pager h exit
+bind pager j next-line
+bind pager k previous-line
+
+# Attachments
+bind attach l view-mailcap
+bind attach h exit
+
+# Notmuch (unified search across accounts)
+set nm_default_uri = "notmuch:///home/gian/.local/share/mail"
+macro index,pager \Cn "<vfolder-from-query>" "Ricerca notmuch"
+
+# Contacts (abook)
+set query_command = "abook --mutt-query '%s'"
+bind editor <Tab> complete-query
+macro index,pager a "<enter-command>set my_pipe_decode=\$pipe_decode pipe_decode<return><pipe-message>abook --add-email<return><enter-command>set pipe_decode=\$my_pipe_decode; unset my_pipe_decode<return>" "add the sender address to abook"
+macro index,pager B "<shell-escape>abook<enter>" "browse/edit address book"
+
+# Scan URLS
+macro index,pager \cu "<pipe-message>urlscan<enter>" "Open URLs"
+macro index,pager U "<pipe-message>urlscan --dedupe --single --nohelp --whitespace-off<enter>" "Scegli e apri un link"
+
+# Account switching
+bind index i noop
+bind pager i noop
+macro index,pager i1 "<enter-command>unmailboxes *<enter><enter-command>source ~/.config/neomutt/accounts/gmail<enter><change-folder>!<enter>" "Gmail"
+macro index,pager i2 "<enter-command>unmailboxes *<enter><enter-command>source ~/.config/neomutt/accounts/mailo<enter><change-folder>!<enter>" "Mailo"
+macro index,pager i3 "<enter-command>unmailboxes *<enter><enter-command>source ~/.config/neomutt/accounts/icloud<enter><change-folder>!<enter>" "iCloud"
+
+source ~/.config/neomutt/colors

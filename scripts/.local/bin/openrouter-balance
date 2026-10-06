@@ -1,0 +1,78 @@
+#!/bin/sh
+# Query OpenRouter credit and recent usage for the Omarchy status-bar widget.
+# Reads the API key via `pass show api/openrouter`.
+set -eu
+
+API_URL=https://openrouter.ai/api/v1
+mode=${1:-credits}
+cache_dir=${XDG_CACHE_HOME:-"$HOME/.cache"}/openrouter-balance
+key=${OPENROUTER_API_KEY:-}
+
+fail() {
+  jq -cn --arg error "$1" '{error: $error}'
+  exit 0
+}
+
+command -v jq >/dev/null 2>&1 || { printf '%s\n' '{"error":"jq non disponibile"}'; exit 0; }
+command -v curl >/dev/null 2>&1 || fail "curl non disponibile"
+
+if [ -z "$key" ]; then
+  # Sostituito Bitwarden con pass
+  command -v pass >/dev/null 2>&1 || fail "pass non disponibile"
+  key=$(pass show api/openrouter) || fail "Impossibile leggere api/openrouter da pass"
+fi
+
+[ -n "$key" ] || fail "Chiave vuota in api/openrouter"
+mkdir -p "$cache_dir"
+
+request() {
+  curl --fail --silent --show-error --max-time 15 \
+    -H "Authorization: Bearer $key" "$1"
+}
+
+case "$mode" in
+  credits)
+    response=$(request "$API_URL/credits" 2>/dev/null) || fail "OpenRouter non raggiungibile"
+    printf '%s' "$response" | jq -c '
+      .data as $d
+      | if ($d.total_credits | type) != "number" or ($d.total_usage | type) != "number"
+        then error("Invalid credits") else $d end
+      | $d.total_credits as $total
+      | $d.total_usage as $usage
+      | {available: (($total - $usage) | if . < 0 then 0 else . end), total: $total, usage: $usage}' \
+      2>/dev/null || fail "Risposta OpenRouter non valida"
+    ;;
+  history)
+    # Activity covers completed UTC days; never cache failed requests as zero spend.
+    cache="$cache_dir/history-v2.json"
+    now=$(date +%s)
+    if [ -f "$cache" ]; then
+      modified=$(stat -c %Y "$cache" 2>/dev/null || printf 0)
+      if [ $((now - modified)) -lt 600 ]; then
+        cat "$cache"
+        exit 0
+      fi
+    fi
+
+    response=$(request "$API_URL/activity" 2>/dev/null) || fail "Storico non disponibile: verificare rete e chiave di gestione OpenRouter"
+    tmp=$(mktemp "$cache_dir/history.XXXXXX")
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    today=$(date -u +%F)
+    week_start=$(date -u -d '7 days ago' +%F)
+    month_start=$(date -u -d '30 days ago' +%F)
+    printf '%s' "$response" | jq -ce --arg today "$today" \
+      --arg week "$week_start" --arg month "$month_start" '
+      .data as $rows
+      | if ($rows | type) != "array" then error("Invalid activity") else $rows end
+      | if all(.[]; (.usage | type) == "number" and (.date | type) == "string")
+        then . else error("Invalid activity row") end
+      | [.[] | select(.date >= $month and .date < $today)] as $days
+      | {today: null,
+         week: ([$days[] | select(.date >= $week) | .usage] | add // 0),
+         month: ([$days[].usage] | add // 0)}' > "$tmp" \
+      2>/dev/null || fail "Risposta storico OpenRouter non valida"
+    mv "$tmp" "$cache"
+    cat "$cache"
+    ;;
+  *) fail "Modalità sconosciuta" ;;
+esac

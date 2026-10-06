@@ -1,0 +1,41 @@
+# Everforest Dark Medium — Zathura
+
+# Base
+set default-bg "#2d353b"
+set default-fg "#d3c6aa"
+
+# Statusbar
+set statusbar-bg "#343f44"
+set statusbar-fg "#d3c6aa"
+
+# Inputbar
+set inputbar-bg "#343f44"
+set inputbar-fg "#7fbbb3"
+
+# Completion
+set completion-bg "#343f44"
+set completion-fg "#d3c6aa"
+set completion-highlight-bg "#7fbbb3"
+set completion-highlight-fg "#2d353b"
+
+# Notifications
+set notification-bg "#7fbbb3"
+set notification-fg "#2d353b"
+
+set notification-error-bg "#e67e80"
+set notification-error-fg "#2d353b"
+
+set notification-warning-bg "#dbbc7f"
+set notification-warning-fg "#2d353b"
+
+# PDF recoloring
+set recolor true
+set recolor-darkcolor "#d3c6aa"
+set recolor-lightcolor "#2d353b"
+set recolor-keephue true
+set recolor-reverse-video true
+
+# Loading
+set render-loading true
+set render-loading-bg "#2d353b"
+set render-loading-fg "#d3c6aa"

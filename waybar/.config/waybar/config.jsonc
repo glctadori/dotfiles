@@ -1,0 +1,78 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 26,
+
+    "modules-left": [
+        "hyprland/workspaces",
+        "mpd"
+    ],
+
+    "modules-center": [
+        "hyprland/window"
+    ],
+
+    "modules-right": [
+        "custom/openrouter",
+        "network",
+        "pulseaudio",
+        "battery",
+        "clock"
+    ],
+
+    "hyprland/workspaces": {
+        "disable-scroll": true,
+        "format": "{name}"
+    },
+
+    "hyprland/window": {
+        "format": "{}",
+        "max-length": 70
+    },
+
+    "custom/openrouter": {
+        "exec": "~/.local/bin/waybar-openrouter",
+        "return-type": "json",
+        "interval": 300,
+        "tooltip": true
+    },
+
+    "mpd": {
+        "format": "{stateIcon} {artist} — {title}",
+        "format-stopped": "󰝛 MPD",
+        "format-disconnected": "󰝛 MPD",
+        "state-icons": {
+            "playing": "󰐊",
+            "paused": "󰏤"
+        },
+        "max-length": 45,
+        "tooltip-format": "{artist} — {album}\n{title}  {elapsedTime:%M:%S}/{totalTime:%M:%S}"
+    },
+
+    "network": {
+        "format-wifi": "  {signalStrength}%",
+        "format-ethernet": "󰈀",
+        "format-disconnected": "󰖪"
+    },
+
+    "pulseaudio": {
+        "format": "{icon} {volume}%",
+        "format-muted": "󰝟",
+        "format-icons": {
+            "default": ["", "", ""]
+        }
+    },
+
+    "battery": {
+        "format": "{icon} {capacity}%",
+        "format-charging": "󰂄 {capacity}%",
+        "format-icons": [
+            "󰁺", "󰁻", "󰁼", "󰁽", "󰁾",
+            "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"
+        ]
+    },
+
+    "clock": {
+        "format": "{:%d/%m  %H:%M}"
+    }
+}

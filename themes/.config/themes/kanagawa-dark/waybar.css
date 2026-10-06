@@ -1,0 +1,43 @@
+window#waybar {
+    color: #dcd7ba;
+}
+
+#workspaces,
+#mpd,
+#window,
+.modules-right {
+    background: rgba(31, 31, 40, 0.94);
+}
+
+#workspaces button {
+    color: #727169;
+}
+
+#workspaces button.active {
+    background: #7e9cd8;
+    color: #1f1f28;
+}
+
+#workspaces button.urgent {
+    background: #c34043;
+    color: #dcd7ba;
+}
+
+#window {
+    color: #c8c093;
+}
+
+#network,
+#pulseaudio,
+#battery,
+#clock {
+    color: #dcd7ba;
+}
+
+#battery.warning {
+    color: #e6c384;
+}
+
+#battery.critical {
+    color: #e82424;
+}

@@ -1,0 +1,70 @@
+# Palette NeoMutt basata sui 16 colori ANSI del tema Omarchy corrente.
+
+uncolor index *
+
+# Interfaccia generale
+color normal default default
+color indicator black cyan
+color markers bold red default
+color error bold red default
+color warning bold yellow default
+color message cyan default
+color prompt bold cyan default
+color progress black cyan
+color tilde brightblack default
+color tree brightblack default
+color status black cyan
+color search black yellow
+
+# Indice: colori distinti per data, mittente e oggetto mantengono la lista
+# leggibile senza aggiungere blocchi di sfondo a ogni riga.
+color index default default ~A
+color index brightwhite default ~N
+color index bold yellow default ~F
+color index red default ~D
+color index_date brightblack default
+color index_author cyan default
+color index_subject default default
+color index_number brightblack default
+color index_flags green default
+color index_tag yellow default
+
+# Intestazioni del messaggio
+color hdrdefault brightblack default
+color header bold cyan default "^From:"
+color header cyan default "^(To|Cc|Bcc):"
+color header bold yellow default "^Subject:"
+color header green default "^Date:"
+color header magenta default "^(Reply-To|Message-ID):"
+
+# Contenuto del messaggio
+color body underline cyan default "(https?|ftp)://[^ \">]+"
+color body magenta default "[-a-zA-Z0-9_.]+@[a-zA-Z0-9_.-]+"
+color body bold yellow default "(^|[[:space:]])(TODO|FIXME|ATTENZIONE|IMPORTANT[E]?)[: ]"
+
+# Citazioni annidate
+color quoted brightblack default
+color quoted1 cyan default
+color quoted2 green default
+color quoted3 magenta default
+color quoted4 yellow default
+
+# Allegati e firme
+color attachment bold cyan default
+color signature brightblack default
+
+# Compositore
+color compose_header cyan default
+color compose_security_encrypt green default
+color compose_security_sign yellow default
+color compose_security_both bold green default
+color compose_security_none brightblack default
+
+# Sidebar, pronta se viene riattivata
+color sidebar_divider brightblack default
+color sidebar_indicator black cyan
+color sidebar_highlight cyan default
+color sidebar_new bold cyan default
+color sidebar_unread cyan default
+color sidebar_flagged yellow default
+color sidebar_spoolfile blue default

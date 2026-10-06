@@ -1,0 +1,19 @@
+[Default Applications]
+image/jpeg=swayimg.desktop
+image/png=swayimg.desktop
+image/webp=swayimg.desktop
+image/gif=swayimg.desktop
+
+application/pdf=org.pwmt.zathura.desktop
+
+x-scheme-handler/mailto=neomutt.desktop
+message/rfc822=neomutt.desktop
+
+x-scheme-handler/http=brave-browser.desktop
+x-scheme-handler/https=brave-browser.desktop
+text/html=brave-browser.desktop
+x-scheme-handler/about=brave-browser.desktop
+x-scheme-handler/unknown=brave-browser.desktop
+
+text/plain=nvim.desktop
+text/markdown=nvim.desktop

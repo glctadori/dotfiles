@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BIN="$HOME/.local/bin/yt-dlp"
+URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+
+mkdir -p "$HOME/.local/bin"
+
+echo "Installing latest yt-dlp..."
+
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
+curl -fL --progress-bar "$URL" -o "$tmp"
+
+chmod 755 "$tmp"
+mv "$tmp" "$BIN"
+
+echo
+"$BIN" --version
+
+echo
+echo "Installed: $BIN"

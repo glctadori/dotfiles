@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Monitor interno del ThinkPad
+INTERNAL="eDP-1"
+
+# Trova automaticamente il primo monitor esterno
+EXTERNAL="$(
+    hyprctl monitors all -j |
+    jq -r --arg internal "$INTERNAL" '
+        .[] | select(.name != $internal) | .name
+    ' | head -n1
+)"
+
+if [[ -z "$EXTERNAL" ]]; then
+    echo "Nessun monitor esterno trovato."
+    exit 0
+fi
+
+echo "Mirror: $INTERNAL -> $EXTERNAL"
+
+# L'esterno prende la stessa immagine dell'interno.
+# preferred evita di hardcodare risoluzione/frequenza.
+hyprctl keyword monitor "$INTERNAL,preferred,auto,1"
+hyprctl keyword monitor "$EXTERNAL,preferred,auto,1,mirror,$INTERNAL"

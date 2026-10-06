@@ -1,0 +1,52 @@
+add_newline = false
+format = "$directory$git_branch$git_status$python${custom.ros}$cmd_duration$character"
+
+[directory]
+style = "bold blue"
+truncation_length = 3
+truncate_to_repo = true
+read_only = " 󰌾"
+read_only_style = "red"
+
+[git_branch]
+format = " [$symbol$branch]($style)"
+style = "bold magenta"
+symbol = " "
+
+[git_status]
+format = "([$all_status$ahead_behind]($style))"
+style = "bold yellow"
+conflicted = " ="
+ahead = " ⇡${count}"
+behind = " ⇣${count}"
+diverged = " ⇕⇡${ahead_count}⇣${behind_count}"
+untracked = " ?${count}"
+stashed = " ≡${count}"
+modified = " !${count}"
+staged = " +${count}"
+renamed = " »${count}"
+deleted = " ✘${count}"
+
+[python]
+format = " [ $version( $virtualenv)]($style)"
+style = "bold yellow"
+
+[custom.ros]
+command = 'printf "%s" "$ROS_DISTRO"'
+when = 'test -n "$ROS_DISTRO"'
+format = " [󰚩 ROS $output]($style)"
+style = "bold cyan"
+
+[cmd_duration]
+min_time = 2000
+format = " [󰔛 $duration]($style)"
+style = "dimmed yellow"
+
+[character]
+format = " $symbol "
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold yellow)"
+vimcmd_replace_one_symbol = "[❮](bold magenta)"
+vimcmd_replace_symbol = "[❮](bold magenta)"
+vimcmd_visual_symbol = "[❮](bold cyan)"

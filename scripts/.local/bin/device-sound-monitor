@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+ADDED="/usr/share/sounds/freedesktop/stereo/device-added.oga"
+REMOVED="/usr/share/sounds/freedesktop/stereo/device-removed.oga"
+
+sound() {
+    case "$1" in
+        added)   pw-play "$ADDED" >/dev/null 2>&1 & ;;
+        removed) pw-play "$REMOVED" >/dev/null 2>&1 & ;;
+    esac
+}
+
+process_event() {
+    # Alimentatore
+    if [[ "$event" == *"POWER_SUPPLY_NAME=AC"* ]]; then
+        if [[ "$event" == *"POWER_SUPPLY_ONLINE=1"* ]]; then
+            sound added
+        elif [[ "$event" == *"POWER_SUPPLY_ONLINE=0"* ]]; then
+            sound removed
+        fi
+        return
+    fi
+
+    # USB
+    if [[ "$event" == *"SUBSYSTEM=usb"* ]]; then
+        if [[ "$event" == *"ACTION=add"* ]]; then
+            sound added
+        elif [[ "$event" == *"ACTION=remove"* ]]; then
+            sound removed
+        fi
+    fi
+}
+
+event=""
+
+while IFS= read -r line; do
+    if [[ -z "$line" ]]; then
+        if [[ -n "$event" ]]; then
+            process_event
+        fi
+        event=""
+    else
+        event+="$line"$'\n'
+    fi
+done < <(udevadm monitor --udev --property)

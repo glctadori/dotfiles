@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IFACE="$(
+    nmcli -t -f DEVICE,TYPE device status |
+    awk -F: '$2 == "wifi" {print $1; exit}'
+)"
+
+if [[ -z "$IFACE" ]]; then
+    notify-send "Wi-Fi" "Nessuna interfaccia Wi-Fi trovata"
+    exit 1
+fi
+
+# Assicura che il Wi-Fi sia acceso
+nmcli radio wifi on
+
+# Ricorda la connessione attuale
+CONNECTION="$(
+    nmcli -t -f GENERAL.CONNECTION device show "$IFACE" |
+    cut -d: -f2-
+)"
+
+# Disconnetti
+nmcli device disconnect "$IFACE" >/dev/null 2>&1 || true
+
+sleep 1
+
+# Nuova scansione
+nmcli device wifi rescan ifname "$IFACE" 2>/dev/null || true
+sleep 1
+
+# Riconnetti
+if [[ -n "$CONNECTION" && "$CONNECTION" != "--" ]]; then
+    nmcli connection up "$CONNECTION" ifname "$IFACE" >/dev/null
+else
+    nmcli device connect "$IFACE" >/dev/null
+fi
+
+notify-send "Wi-Fi" "Riconnesso"

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+action="$1"
+class="$(hyprctl activewindow -j | jq -r '.class' | tr '[:upper:]' '[:lower:]')"
+
+case "$class" in
+  kitty)
+    case "$action" in
+      copy)  hyprctl dispatch sendshortcut "CTRL SHIFT,C,activewindow" ;;
+      paste) hyprctl dispatch sendshortcut "CTRL SHIFT,V,activewindow" ;;
+      cut)   hyprctl dispatch sendshortcut "CTRL,X,activewindow" ;;
+    esac
+    ;;
+  *)
+    case "$action" in
+      copy)  hyprctl dispatch sendshortcut "CTRL,C,activewindow" ;;
+      paste) hyprctl dispatch sendshortcut "CTRL,V,activewindow" ;;
+      cut)   hyprctl dispatch sendshortcut "CTRL,X,activewindow" ;;
+    esac
+    ;;
+esac

@@ -1,0 +1,45 @@
+#!/bin/sh
+
+set -eu
+
+notify_error() {
+    command -v notify-send >/dev/null 2>&1 &&
+        notify-send --urgency=critical 'Wi-Fi' "$1" || true
+}
+
+command -v nmcli >/dev/null 2>&1 || {
+    notify_error 'nmcli non è installato'
+    exit 127
+}
+
+device=$(LC_ALL=C nmcli -t -f DEVICE,TYPE device status 2>/dev/null |
+    awk -F: '$2 == "wifi" { print $1; exit }')
+[ -n "$device" ] || {
+    notify_error 'Nessun dispositivo Wi-Fi disponibile'
+    exit 1
+}
+
+nmcli radio wifi on >/dev/null
+nmcli device wifi rescan ifname "$device" >/dev/null 2>&1 || true
+uuid=$(nmcli -g GENERAL.CON-UUID device show "$device" 2>/dev/null | sed -n '1p')
+
+if [ -n "$uuid" ] && [ "$uuid" != -- ]; then
+    nmcli connection down uuid "$uuid" >/dev/null 2>&1 || true
+else
+    uuid=$(LC_ALL=C nmcli -t -f UUID,TYPE,TIMESTAMP connection show 2>/dev/null |
+        awk -F: '$2 ~ /^(wifi|802-11-wireless)$/ && $3 > latest { latest=$3; uuid=$1 } END { print uuid }')
+fi
+
+[ -n "$uuid" ] || {
+    notify_error 'Nessun profilo Wi-Fi salvato'
+    exit 1
+}
+
+if nmcli connection up uuid "$uuid" ifname "$device" >/dev/null; then
+    connection=$(nmcli -g GENERAL.CONNECTION device show "$device" 2>/dev/null | sed -n '1p')
+    command -v notify-send >/dev/null 2>&1 &&
+        notify-send 'Wi-Fi' "Riconnesso: ${connection:-$device}" || true
+else
+    notify_error 'Riconnessione non riuscita'
+    exit 1
+fi

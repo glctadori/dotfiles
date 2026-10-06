@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Script fuzzel per opzioni di sistema con icone Nerd Font
+
+# Rileva il compositor in uso (Hyprland o Sway)
+if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+    WM="hyprland"
+elif [ -n "$SWAYSOCK" ]; then
+    WM="sway"
+else
+    WM="unknown"
+fi
+
+# Voci del menu con icone Nerd Font
+#  spegni
+#  riavvia
+#  iberna
+#  reload (hyprland/sway)
+#  suspend
+#  lock
+options="  Spegni
+  Riavvia
+  Iberna
+  Reload $WM
+  Suspend
+  Lock
+  Logout"
+
+# Mostra il menu con fuzzel
+chosen=$(echo -e "$options" | fuzzel --dmenu --prompt "Sistema: ")
+
+# Esegue l'azione corrispondente
+case "$chosen" in
+    *Spegni*)      systemctl poweroff ;;
+    *Riavvia*)     systemctl reboot ;;
+    *Iberna*)      systemctl hibernate ;;
+    *Reload*)      case "$WM" in
+                       hyprland) hyprctl reload ;;
+                       sway)     swaymsg reload ;;
+                   esac ;;
+    *Suspend*)     systemctl suspend ;;
+    *Lock*)        # Sostituisci con il tuo locker preferito
+                   hyprlock 2>/dev/null || swaylock ;;
+    *Logout*)      case "$WM" in
+                       hyprland) hyprctl dispatch exit ;;
+                       sway)     swaymsg exit ;;
+                   esac ;;
+esac

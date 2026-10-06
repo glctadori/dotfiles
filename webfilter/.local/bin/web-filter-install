@@ -22,7 +22,7 @@ as_root() {
 
 for dependency in dnscrypt-proxy jq curl ufw; do
     command -v "$dependency" >/dev/null 2>&1 || {
-        echo "web-filter: installare prima $dependency con: sudo apt install -S $dependency" >&2
+        echo "web-filter: installare prima $dependency con: sudo apt install $dependency" >&2
         exit 1
     }
 done
@@ -67,6 +67,10 @@ fi
 
 as_root touch "$state_dir/installed"
 as_root chmod 0600 "$state_dir/installed"
+# Usiamo systemd-resolved direttamente; il supporto resolvconf di
+# dnscrypt-proxy è incompatibile/superfluo con questa configurazione.
+as_root systemctl disable --now dnscrypt-proxy-resolvconf.service 2>/dev/null || true
+as_root systemctl reset-failed dnscrypt-proxy-resolvconf.service 2>/dev/null || true
 as_root /usr/local/libexec/web-filter-update
 as_root /usr/local/sbin/web-filter _activate
 

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+SOCKET="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+
+# Applica subito lo stato corrente.
+# Risolve il caso monitor già collegato al boot/login.
+~/.local/bin/display-hotplug &
+
+# Poi resta in ascolto dei cambiamenti.
+socat -U - UNIX-CONNECT:"$SOCKET" |
+while IFS= read -r event; do
+    case "$event" in
+        monitoradded*|monitorremoved*)
+            ~/.local/bin/display-hotplug &
+            ;;
+    esac
+done

@@ -1,0 +1,11 @@
+# Run the system backup helper in the user session, without root privileges.
+[Unit]
+Description=Restic backup of home to external HDD
+
+[Service]
+Type=oneshot
+Environment=BACKUP_SCHEDULED=1
+ExecStart=%h/.local/bin/backup hdd backup
+# Give interactive applications priority.
+Nice=10
+IOSchedulingClass=idle

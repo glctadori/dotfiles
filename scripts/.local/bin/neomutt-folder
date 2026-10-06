@@ -1,0 +1,53 @@
+#!/bin/sh
+
+set -eu
+
+cache_dir=${XDG_CACHE_HOME:-"$HOME/.cache"}/neomutt
+folder_file="$cache_dir/folder.rc"
+account=${1:-gmail}
+
+mkdir -p "$cache_dir"
+
+case $account in
+    gmail)
+        folders='Inbox|=INBOX
+Archivio|=[Gmail]/Tutti i messaggi
+Bozze|=[Gmail]/Bozze
+Inviate|=[Gmail]/Posta inviata
+Speciali|=[Gmail]/Speciali
+Importanti|=[Gmail]/Importanti
+Spam|=[Gmail]/Spam
+Cestino|=[Gmail]/Cestino'
+        ;;
+    mailo)
+        folders='Inbox|=INBOX
+Archivio|=Archive
+Bozze|=draftbox
+Inviate|=sent
+Spam|=unsolbox
+Cestino|=trash'
+        ;;
+    icloud)
+        folders='Inbox|=INBOX
+Archivio|=Archive
+Bozze|=Drafts
+Inviate|=Sent Messages
+Spam|=Junk
+Cestino|=Deleted Messages'
+        ;;
+    *)
+        folders=
+        ;;
+esac
+
+choice=$(printf '%s\n' "$folders" |
+    fzf --height=~40% --layout=reverse --border \
+        --delimiter='|' --with-nth=1 \
+        --prompt='Cartella> ' --no-multi) || choice=
+
+if [ -n "$choice" ]; then
+    folder=${choice#*|}
+    printf 'push "<change-folder>%s<enter>"\n' "$folder" >"$folder_file"
+else
+    printf '# Nessuna cartella selezionata\n' >"$folder_file"
+fi

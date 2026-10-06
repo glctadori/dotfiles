@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CONFIG_ROOT="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+POLICY_SOURCE="$CONFIG_ROOT/brave/policies/minimal.json"
+POLICY_DIR="/etc/brave/policies/managed"
+POLICY_DEST="$POLICY_DIR/dotfiles-minimal.json"
+
+FLAGS_FILE="$CONFIG_ROOT/brave/brave-flags.conf"
+
+FLAGS=(
+    "--hide-scrollbars"
+    "--disable-session-crashed-bubble"
+)
+
+install_brave() {
+    echo "Setting up Brave..."
+
+    # ── Validate policy ──────────────────────────────────────────────
+    if [[ ! -r "$POLICY_SOURCE" ]]; then
+        echo "Policy not found: $POLICY_SOURCE" >&2
+        exit 1
+    fi
+
+    if ! jq empty "$POLICY_SOURCE"; then
+        echo "Invalid JSON: $POLICY_SOURCE" >&2
+        exit 1
+    fi
+
+    # ── Install policy ───────────────────────────────────────────────
+    sudo install -D -m 0644 \
+        "$POLICY_SOURCE" \
+        "$POLICY_DEST"
+
+    # ── Brave flags ──────────────────────────────────────────────────
+    mkdir -p "$(dirname "$FLAGS_FILE")"
+    touch "$FLAGS_FILE"
+
+    for flag in "${FLAGS[@]}"; do
+        grep -Fxq -- "$flag" "$FLAGS_FILE" ||
+            printf '%s\n' "$flag" >> "$FLAGS_FILE"
+    done
+
+    echo
+    echo "Brave configured."
+    echo "Policy: $POLICY_DEST"
+    echo "Flags:  $FLAGS_FILE"
+    echo
+    echo "Restart Brave and check brave://policy"
+}
+
+remove_brave() {
+    echo "Removing Brave setup..."
+
+    # ── Remove policy ────────────────────────────────────────────────
+    sudo rm -f "$POLICY_DEST"
+
+    # ── Remove only flags managed by this script ────────────────────
+    if [[ -f "$FLAGS_FILE" ]]; then
+        tmp=$(mktemp)
+
+        cp "$FLAGS_FILE" "$tmp"
+
+        for flag in "${FLAGS[@]}"; do
+            sed -i "\|^${flag}$|d" "$tmp"
+        done
+
+        if [[ -s "$tmp" ]]; then
+            mv "$tmp" "$FLAGS_FILE"
+        else
+            rm -f "$tmp" "$FLAGS_FILE"
+        fi
+    fi
+
+    echo "Brave setup removed."
+    echo "Restart Brave."
+}
+
+case "${1:-install}" in
+    install)
+        install_brave
+        ;;
+
+    remove)
+        remove_brave
+        ;;
+
+    *)
+        echo "Usage: setup-brave [install|remove]" >&2
+        exit 2
+        ;;
+esac

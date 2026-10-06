@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 1 ] || [ -z "$1" ]; then
+    echo "Uso: mpc-playlist PLAYLIST" >&2
+    exit 2
+fi
+
+systemctl --user start mpd.service
+mpc clear >/dev/null
+mpc load "$1" >/dev/null
+mpc play >/dev/null

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+data="$(openrouter-balance credits 2>/dev/null)" || {
+    jq -nc '{
+        text: "󰅚 OpenRouter",
+        tooltip: "Errore nel recupero credito OpenRouter",
+        class: "error"
+    }'
+    exit
+}
+
+error="$(jq -r '.error // empty' <<< "$data")"
+
+if [[ -n "$error" ]]; then
+    jq -nc \
+        --arg error "$error" \
+        '{
+            text: "󰅚 OpenRouter",
+            tooltip: $error,
+            class: "error"
+        }'
+    exit
+fi
+
+available="$(jq -r '.available // 0' <<< "$data")"
+total="$(jq -r '.total // 0' <<< "$data")"
+usage="$(jq -r '.usage // 0' <<< "$data")"
+
+jq -nc \
+    --arg available "$(printf '%.2f' "$available")" \
+    --arg total "$(printf '%.2f' "$total")" \
+    --arg usage "$(printf '%.2f' "$usage")" \
+    '{
+        text: ("󱚣 $" + $available),
+        tooltip: (
+            "OpenRouter\n" +
+            "Disponibile  $" + $available + "\n" +
+            "Credito totale  $" + $total + "\n" +
+            "Utilizzo totale  $" + $usage
+        ),
+        class: "normal"
+    }'

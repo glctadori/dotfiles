@@ -1,0 +1,63 @@
+@import "../themes/current/waybar.css";
+
+* {
+    border: none;
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: transparent;
+}
+
+/* Pillola sinistra */
+#workspaces {
+    border-radius: 9px;
+    margin: 5px 0 5px 8px;
+    padding: 0 4px;
+}
+
+#workspaces button {
+    padding: 0 7px;
+    margin: 2px 1px;
+    border-radius: 6px;
+    background: transparent;
+}
+
+/* Pillola MPD */
+#mpd {
+    border-radius: 6px;
+    margin: 5px 0 5px 6px;
+    padding: 0 10px;
+}
+
+/* Pillola centrale */
+#window {
+    border-radius: 6px;
+    margin: 5px 0;
+    padding: 0 14px;
+}
+
+/* Pillola destra */
+.modules-right {
+    border-radius: 6px;
+    margin: 5px 8px 5px 0;
+    padding: 0 5px;
+}
+
+#network,
+#custom-pomodoro,
+#custom-agent-usage,
+#custom-project,
+#custom-project-agents,
+#pulseaudio,
+#battery,
+#clock {
+    background: transparent;
+    padding: 0 6px;
+}
+
+#custom-pomodoro.inactive {
+    padding: 0;
+}

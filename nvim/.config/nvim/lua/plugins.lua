@@ -27,8 +27,26 @@ return {
     opts = { background = "medium" },
     config = function(_, opts)
       require("everforest").setup(opts)
-      vim.cmd.colorscheme("everforest")
+      -- vim.cmd.colorscheme("everforest")
     end,
+  },
+  {
+    "ellisonleao/gruvbox.nvim",
+    priority = 1000,
+  },
+  {
+    "folke/tokyonight.nvim",
+    lazy = false,
+    priority = 1000,
+  },
+  {
+    "rebelot/kanagawa.nvim",
+    priority = 1000,
+  },
+  {
+    "catppuccin/nvim",
+    name = "catppuccin",
+    priority = 1000,
   },
   -- { "nvim-mini/mini.icons", opts = {} },
   {
@@ -129,53 +147,6 @@ return {
       table.insert(opts.image.formats, "svg")
       snacks.setup(opts)
     end,
-    keys = {
-      {
-        "<leader>ff",
-        function()
-          Snacks.picker.files({ cwd = root() })
-        end,
-        desc = "Find files",
-      },
-      {
-        "<leader>e",
-        function()
-          Snacks.explorer({ cwd = root() })
-        end,
-        desc = "File explorer",
-      },
-      {
-        "<leader>sh",
-        function()
-          Snacks.picker.help()
-        end,
-        desc = "Help",
-      },
-    },
-  },
-  {
-    "ibhagwan/fzf-lua",
-    cmd = "FzfLua",
-    dependencies = { "nvim-mini/mini.icons" },
-    opts = {
-      grep = { rg_opts = "--column --line-number --no-heading --color=always --smart-case --hidden -g !.git" },
-    },
-    keys = {
-      {
-        "<leader>bb",
-        function()
-          require("fzf-lua").buffers()
-        end,
-        desc = "Find buffers (fzf)",
-      },
-      {
-        "<leader>sg",
-        function()
-          require("fzf-lua").live_grep({ cwd = root() })
-        end,
-        desc = "Search project (ripgrep + fzf)",
-      },
-    },
   },
   {
     "nvim-treesitter/nvim-treesitter",
@@ -223,7 +194,16 @@ return {
     "vimwiki/vimwiki",
     branch = "dev",
     init = function()
-      vim.g.vimwiki_list = { { path = "~/Projects/notes", index = "index", syntax = "markdown", ext = ".md" } }
+      vim.g.vimwiki_list = {
+        {
+          path = "~/projects/notes",
+          index = "index",
+          syntax = "markdown",
+          ext = ".md",
+          diary_rel_path = "diary/",
+          diary_index = "Diary",
+        },
+      }
       vim.g.vimwiki_global_ext = 0
     end,
   },
@@ -232,19 +212,7 @@ return {
     event = { "BufReadPre", "BufNewFile" },
     opts = {
       on_attach = function(buf)
-        local gs = require("gitsigns")
-        local function map(key, action, desc)
-          vim.keymap.set("n", key, action, { buffer = buf, desc = desc })
-        end
-        map("]h", function()
-          gs.nav_hunk("next")
-        end, "Next hunk")
-        map("[h", function()
-          gs.nav_hunk("prev")
-        end, "Previous hunk")
-        map("<leader>hp", gs.preview_hunk, "Preview hunk")
-        map("<leader>hs", gs.stage_hunk, "Stage hunk")
-        map("<leader>hr", gs.reset_hunk, "Reset hunk")
+        require("keymaps").gitsigns(buf)
       end,
     },
   },
@@ -252,30 +220,14 @@ return {
     "stevearc/conform.nvim",
     cmd = "ConformInfo",
     opts = {
-      formatters_by_ft = { lua = { "stylua" }, sh = { "shfmt" }, python = { "ruff_format" } },
-      default_format_opts = { lsp_format = "fallback", timeout_ms = 3000 },
-    },
-    keys = {
-      {
-        "<leader>cf",
-        function()
-          require("conform").format()
-        end,
-        mode = { "n", "v" },
-        desc = "Format explicitly",
+      formatters_by_ft = {
+        lua = { "stylua" },
+        sh = { "shfmt" },
+        python = { "ruff_format" },
       },
-    },
-  },
-  {
-    "jbyuki/nabla.nvim",
-    ft = { "markdown", "markdown.mdx", "vimwiki", "codecompanion" },
-    keys = {
-      {
-        "<leader>un",
-        function()
-          require("nabla").toggle_virt()
-        end,
-        desc = "Toggle LaTeX rendering",
+      default_format_opts = {
+        lsp_format = "fallback",
+        timeout_ms = 3000,
       },
     },
   },
@@ -287,7 +239,7 @@ return {
       "mason-org/mason-lspconfig.nvim",
     },
     config = function()
-      require("config.lsp").setup()
+      require("lsp").setup()
       require("mason-lspconfig").setup({
         ensure_installed = { "pyright", "ruff", "clangd", "bashls", "lua_ls", "marksman" },
         automatic_enable = { "pyright", "ruff", "clangd", "bashls", "lua_ls", "marksman" },
@@ -296,17 +248,8 @@ return {
   },
   {
     "NeogitOrg/neogit",
-    dependencies = {
-      "nvim-lua/plenary.nvim",
-    },
+    dependencies = { "nvim-lua/plenary.nvim" },
     cmd = "Neogit",
-    keys = {
-      {
-        "<leader>gg",
-        "<cmd>Neogit<cr>",
-        desc = "Git",
-      },
-    },
     opts = {},
   },
 }

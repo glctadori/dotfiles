@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -e
+THEMES="$HOME/.config/themes"
+THEME="${1:-}"
+
+if [[ -z "$THEME" ]]; then
+    basename "$(readlink -f "$THEMES/current")"
+    exit
+fi
+
+if [[ ! -d "$THEMES/$THEME" ]]; then
+    echo "Theme not found: $THEME"
+    echo
+    echo "Available:"
+    find "$THEMES" -mindepth 1 -maxdepth 1 -type d -printf '  %f\n'
+    exit 1
+fi
+
+ln -sfn "$THEMES/$THEME" "$THEMES/current"
+
+hyprctl reload >/dev/null 2>&1 || true
+kitty @ load-config || true
+kill -SIGUSR1 "$(pgrep -o kitty)"
+pkill -USR1 kitty 2>/dev/null || true
+pkill -SIGUSR2 waybar 2>/dev/null || true
+makoctl reload 2>/dev/null || true 
+hyprctl hyprpaper wallpaper ",$THEMES/current/wallpaper.png" || true
+
+# Reload theme in all running Neovim instances
+for socket in "$HOME"/.cache/nvim/sockets/*.sock; do
+    [ -S "$socket" ] || continue
+
+    if ! nvim --server "$socket" \
+        --remote-expr 'execute("lua dofile(vim.fn.expand(\"~/.config/themes/current/nvim.lua\"))")' \
+        >/dev/null 2>&1; then
+        rm -f "$socket"
+    fi
+done
+
+mode=$(cat "$THEMES/current/mode")
+
+case "$mode" in
+    dark)
+        gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'
+        gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+        ;;
+    light)
+        gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita'
+        gsettings set org.gnome.desktop.interface color-scheme 'prefer-light'
+        ;;
+esac
+# echo "Theme: $THEME"
+
+# Carica neovim theme
+# load file in theme/current/neovim da init.lua
+# dentro colorscheme(x) e set bg dark/light
+# poi reload live theme
+
+# lock
+# zathura
+# neomutt
+# brave
+# firefox
+# foot
+# fzf
+# gtk: dark light

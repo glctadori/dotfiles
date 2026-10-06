@@ -1,0 +1,9 @@
+# Push committed project work periodically; authentication uses the user Git setup.
+[Unit]
+Description=Push committed Git repositories under Projects
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/projects-auto-push
+# Keep background Git traffic unobtrusive.
+Nice=10

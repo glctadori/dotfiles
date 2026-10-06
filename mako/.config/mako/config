@@ -1,0 +1,7 @@
+font=JetBrainsMono Nerd Font 10
+include=~/.config/themes/current/mako.conf
+border-size=2
+border-radius=8
+
+padding=10
+default-timeout=5000

@@ -10,7 +10,11 @@ case $1 in hdd|b2) kind=$1 ;; *) printf '%s\n' "$usage" >&2; exit 2 ;; esac
 case $2 in backup|restore|prune) action=$2 ;; *) printf '%s\n' "$usage" >&2; exit 2 ;; esac
 
 # This shell configuration contains paths only, never credentials.
-. "${HOME:?}/.config/backup/config"
+# . "${HOME:?}/.config/backup/config"
+
+HDD_MOUNT=/run/media/${USER:?}/BACKUP
+HDD_SOURCE=/dev/mapper/BACKUP-LUKS
+HDD_REPOSITORY=$HDD_MOUNT/restic/$(hostname -s)
 title="Backup $kind"
 notify() { command -v notify-send >/dev/null 2>&1 && notify-send "$title" "$1" >/dev/null 2>&1 || :; }
 fail() { printf '%s: %s\n' "$title" "$1" >&2; notify "Errore: $1"; exit 1; }
@@ -103,16 +107,20 @@ if [ "$action" = backup ]; then
   # Retention includes the previous tags so existing managed snapshots still expire.
   notify 'Backup avviato'
   if [ "$kind" = hdd ]; then
-    restic -r "$repo" --password-file "$password_file" backup --one-file-system --tag "$tag" \
-      --exclude "$HOME/Downloads" --exclude "$HOME/.cache" \
-      --exclude "$HOME/.local/share/Trash" \
-      "$HOME" "$recovery_dir" || fail 'Backup fallito'
-    restic -r "$repo" --password-file "$password_file" forget --tag "$tag" --tag "dotfiles-$kind" \
+    restic -r "$repo" --password-file "$password_file" backup \
+      --one-file-system \
+      --tag "$tag" \
+      --exclude "$HOME/in" \
+      "$HOME"/* \
+      "$recovery_dir" || fail 'Backup fallito'
+  
+    restic -r "$repo" --password-file "$password_file" forget \
+      --tag "$tag" --tag "dotfiles-$kind" \
       --keep-weekly 8 --keep-monthly 12 || fail 'Conservazione snapshot fallita'
   else
-    [ -d "$HOME/Projects" ] && [ -d "$HOME/Documents" ] || fail 'Projects o Documents mancante'
+    [ -d "$HOME/projects" ] && [ -d "$HOME/docs" ] || fail 'projects o documents mancante'
     restic -r "$repo" --password-file "$password_file" backup --tag "$tag" \
-      "$HOME/Projects" "$HOME/Documents" "$recovery_dir" || fail 'Backup fallito'
+      "$HOME/projects" "$HOME/docs" "$recovery_dir" || fail 'Backup fallito'
     restic -r "$repo" --password-file "$password_file" forget --tag "$tag" --tag "dotfiles-$kind" \
       --keep-daily 7 --keep-weekly 4 --keep-monthly 12 || fail 'Conservazione snapshot fallita'
   fi

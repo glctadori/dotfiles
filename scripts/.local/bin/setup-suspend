@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RULE="/etc/udev/rules.d/90-usb-wakeup.rules"
+
+echo "==> Installing generic USB wake support..."
+
+sudo tee "$RULE" >/dev/null <<'EOF'
+# Enable wake-up for all USB devices, hubs and root hubs.
+# Useful for laptops used docked with external keyboard.
+ACTION=="add|change", SUBSYSTEM=="usb", TEST=="power/wakeup", ATTR{power/wakeup}="enabled"
+EOF
+
+echo "==> Reloading udev rules..."
+sudo udevadm control --reload-rules
+sudo udevadm trigger --subsystem-match=usb
+
+echo
+echo "==> Current USB wake status:"
+grep . /sys/bus/usb/devices/*/power/wakeup 2>/dev/null || true
+
+echo
+echo "Done."
+echo "Test with: systemctl suspend"

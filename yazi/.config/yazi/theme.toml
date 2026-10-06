@@ -1,0 +1,10 @@
+[icon]
+prepend_dirs = [
+  { name = "docs", text = "", fg = "cyan" },
+  { name = "in", text = "", fg = "cyan" },
+  { name = "media", text = "󰉏", fg = "cyan" },
+  { name = "music", text = "", fg = "cyan" },
+  { name = "pictures", text = "", fg = "cyan" },
+  { name = "projects", text = "", fg = "cyan" },
+  { name = "videos", text = "", fg = "cyan" },
+]

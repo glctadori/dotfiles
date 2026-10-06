@@ -1,0 +1,10 @@
+# Refresh all configured Newsboat feeds; started by newsboat-refresh.timer.
+# Requires Newsboat and URLs configured under ~/.config/newsboat.
+[Unit]
+Description=Refresh Newsboat feeds
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/newsboat -q -x reload

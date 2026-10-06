@@ -145,7 +145,7 @@ function M.file()
     return
   end
 
-  vim.ui.picker.files({
+  Snacks.picker.files({
     confirm = function(picker, item)
       picker:close()
 

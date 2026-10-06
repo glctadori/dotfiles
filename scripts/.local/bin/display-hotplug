@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -u
+
+# Aspetta che Hyprland/PipeWire abbiano registrato il nuovo hardware.
+sleep 0.5
+
+# ── VIDEO ────────────────────────────────────────────────
+
+INTERNAL="$(
+    hyprctl monitors all -j |
+        jq -r '.[] | select(.name | startswith("eDP-")) | .name' |
+        head -n1
+)"
+
+EXTERNAL="$(
+    hyprctl monitors all -j |
+        jq -r '.[] | select(.name | startswith("eDP-") | not) | .name' |
+        head -n1
+)"
+
+if [[ -n "$INTERNAL" && -n "$EXTERNAL" ]]; then
+    # Esterno alla sua risoluzione preferita.
+    hyprctl keyword monitor "$EXTERNAL,preferred,auto,1"
+
+    sleep 0.3
+
+    # Laptop = copia dell'esterno.
+    hyprctl keyword monitor "$INTERNAL,preferred,auto,1,mirror,$EXTERNAL"
+else
+    # Nessun monitor esterno: ripristina automaticamente il pannello.
+    if [[ -n "$INTERNAL" ]]; then
+        hyprctl keyword monitor "$INTERNAL,preferred,auto,1.5"
+    fi
+fi
+
+
+# ── AUDIO ────────────────────────────────────────────────
+
+sleep 0.5
+
+# Trova automaticamente un sink digitale HDMI/DisplayPort.
+HDMI_SINK="$(
+    wpctl status -n |
+        awk '
+            /Sinks:/ {sinks=1; next}
+            /Sources:/ {sinks=0}
+            sinks && tolower($0) ~ /(hdmi|displayport)/ {
+                gsub(/[.*]/, "", $1)
+                print $1
+                exit
+            }
+        '
+)"
+
+if [[ -n "$HDMI_SINK" ]]; then
+    wpctl set-default "$HDMI_SINK"
+else
+    # Nessun HDMI: scegli automaticamente il sink analogico disponibile.
+    ANALOG_SINK="$(
+        wpctl status -n |
+            awk '
+                /Sinks:/ {sinks=1; next}
+                /Sources:/ {sinks=0}
+                sinks && tolower($0) ~ /(analog|speaker)/ {
+                    gsub(/[.*]/, "", $1)
+                    print $1
+                    exit
+                }
+            '
+    )"
+
+    [[ -n "$ANALOG_SINK" ]] && wpctl set-default "$ANALOG_SINK"
+fi

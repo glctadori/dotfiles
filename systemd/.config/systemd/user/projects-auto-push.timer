@@ -1,0 +1,11 @@
+# Check project repositories regularly without keeping a resident process.
+[Unit]
+Description=Periodic push of Git repositories under Projects
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=2m
+
+[Install]
+WantedBy=timers.target

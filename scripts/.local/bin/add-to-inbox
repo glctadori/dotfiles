@@ -1,0 +1,50 @@
+#!/bin/sh
+
+set -eu
+
+inbox=${INBOX_FILE:-"$HOME/in/inbox.md"}
+
+# Assicura che ~/in e inbox.md esistano.
+mkdir -p "$(dirname "$inbox")"
+[ -f "$inbox" ] || : > "$inbox"
+
+open_inbox() {
+    exec kitty --single-instance \
+        --app-id=inbox-nvim \
+        nvim "$inbox"
+}
+
+# Apertura diretta.
+if [ "${1:-}" = "--open" ]; then
+    open_inbox
+fi
+
+# Testo passato direttamente oppure Fuzzel.
+if [ "$#" -gt 0 ]; then
+    entry=$*
+else
+    entry=$(
+        printf '%s\n' '󰈙  Open Inbox' |
+            fuzzel \
+                --dmenu \
+                --prompt='󰏫  Inbox: '
+    ) || exit 0
+fi
+
+[ -n "$entry" ] || exit 0
+
+case "$entry" in
+    '󰈙  Open Inbox')
+        open_inbox
+        ;;
+
+    *)
+        printf -- '- %s\n' "$entry" >> "$inbox"
+
+        command -v notify-send >/dev/null 2>&1 &&
+            notify-send \
+                --expire-time=2000 \
+                '󰏫  Aggiunto alla inbox' \
+                "$entry" || true
+        ;;
+esac

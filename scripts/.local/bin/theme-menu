@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Script per selezionare un tema da ~/.config/themes con fuzzel
+
+themes_dir="$(realpath "$HOME/.config/themes")"
+
+selected=$(find -L "$themes_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+    | grep -vx current \
+    | sort | fuzzel --dmenu --prompt "Theme: ")
+
+# Se nulla è selezionato, esci
+[ -z "$selected" ] && exit 0
+
+# Applica il tema selezionato
+"$HOME/.local/bin/theme" "$selected"
+
+# Notifica con mako
+notify-send "Theme" "Tema applicato: $selected"

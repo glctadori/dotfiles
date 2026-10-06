@@ -1,0 +1,13 @@
+# Schedule Restic jobs in the user session; the matching service has the same basename.
+[Unit]
+Description=Weekly prune of external HDD Restic repository
+
+[Timer]
+OnCalendar=Sun *-*-* 15:00:00
+# Catch up a missed schedule once on login; unavailable destinations are skipped.
+Persistent=true
+# Spread startup jobs over time.
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

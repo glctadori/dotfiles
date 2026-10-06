@@ -1,0 +1,9 @@
+# Run the system backup helper in the user session, without root privileges.
+[Unit]
+Description=Prune Restic repository on Backblaze B2
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/backup b2 prune
+# Give interactive applications priority.
+Nice=10
