@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import os
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+
+
+MODELS = {
+    "pplx": "perplexity/pplx-embed-v1-0.6b",
+    "qwen": "qwen/qwen3-embedding-8b",
+}
+
+CORPORA = {
+    "library": {
+        "type": "pdf",
+        "source": "~/docs/library",
+        "index": "~/.local/share/semantic-index/library",
+    },
+    "wiki": {
+        "type": "markdown",
+        "source": "~/projects/notes",
+        "index": "~/.local/share/semantic-index/wiki",
+    },
+}
+
+
+def embed(texts, model):
+    client = Path(__file__).resolve().with_name("agent-embeddings")
+    result = subprocess.run(
+        ["/usr/bin/python3", "-I", str(client)],
+        input=json.dumps({"model": model, "input": texts}),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "embedding service failed")
+    return [np.asarray(vector, dtype=np.float32)
+            for vector in json.loads(result.stdout)["embeddings"]]
+
+
+def embed_query(text, model):
+    return embed([text], model)[0]
+
+
+def cosine_similarity(query, vector, query_norm):
+    vector_norm = np.linalg.norm(vector)
+
+    if query_norm == 0 or vector_norm == 0:
+        return 0.0
+
+    return float(
+        np.dot(query, vector)
+        / (query_norm * vector_norm)
+    )
+
+
+def print_results(results, output_format, source_type="pdf"):
+    location_key = "line" if source_type == "markdown" else "page"
+    location_label = "line" if source_type == "markdown" else "p."
+    if output_format == "json":
+        print(json.dumps([
+            {
+                "rank": rank,
+                "path": str(Path(path).expanduser().resolve()),
+                location_key: page,
+                "chunk_no": chunk_no,
+                "score": score,
+                "text": text,
+            }
+            for rank, (score, path, page, chunk_no, text)
+            in enumerate(results, start=1)
+        ], ensure_ascii=False, indent=2))
+        return
+
+    for rank, (score, path, page, chunk_no, text) in enumerate(results, start=1):
+        heading = (
+            f"[{rank}] {Path(path).name} "
+            f"— {location_label} {page} — score {score:.3f}"
+        )
+        if output_format == "compact":
+            preview = " ".join(text.split())
+            if len(preview) > 160:
+                preview = preview[:157] + "..."
+            print(f"{heading} — {preview}")
+        else:
+            print("=" * 72)
+            print(heading)
+            print("=" * 72)
+            print(text.strip())
+            print()
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Semantic search over an indexed corpus."
+    )
+
+    parser.add_argument(
+        "corpus",
+        choices=CORPORA.keys(),
+    )
+
+    parser.add_argument(
+        "query",
+        nargs="+",
+    )
+
+    parser.add_argument(
+        "--model",
+        choices=MODELS.keys(),
+        default="pplx",
+    )
+
+    parser.add_argument(
+        "-k",
+        "--top-k",
+        type=int,
+        default=5,
+    )
+
+    parser.add_argument(
+        "--format",
+        choices=("text", "compact", "json"),
+        default="text",
+        help="output format (default: text); PDF pages and Markdown lines are 1-based",
+    )
+
+    args = parser.parse_args()
+    model = MODELS[args.model]
+    if args.top_k < 1:
+        raise SystemExit("error: top-k must be >= 1")
+
+    query_text = " ".join(args.query).strip()
+
+    if not query_text:
+        raise SystemExit("error: empty query")
+
+    index_dir = (
+        Path(
+            os.path.expanduser(
+                CORPORA[args.corpus]["index"]
+            )
+        )
+        / args.model
+    ).resolve()
+
+    db_path = index_dir / "index.sqlite"
+
+    if not db_path.exists():
+        raise SystemExit(
+            f"error: index not found: {db_path}\n"
+            f"run semantic-index {args.corpus} "
+            f"--model {args.model}"
+        )
+
+    db = sqlite3.connect(db_path)
+
+    chunk_count = db.execute(
+        "SELECT COUNT(*) FROM chunks"
+    ).fetchone()[0]
+
+    if chunk_count == 0:
+        raise SystemExit("error: index contains no chunks")
+
+    query_vector = embed_query(
+        query_text,
+        model,
+    )
+    query_norm = np.linalg.norm(query_vector)
+
+    results = []
+
+    rows = db.execute("""
+        SELECT
+            path,
+            page,
+            chunk_no,
+            text,
+            embedding
+        FROM chunks
+    """)
+
+    for path, page, chunk_no, text, blob in rows:
+        vector = np.frombuffer(
+            blob,
+            dtype=np.float32,
+        )
+
+        # Protect against stale indexes if embedding model changes.
+        if vector.shape != query_vector.shape:
+            raise SystemExit(
+                "error: embedding dimensions differ; "
+                f"run semantic-index {args.corpus} --model {args.model} --force"
+            )
+
+        score = cosine_similarity(
+            query_vector,
+            vector,
+            query_norm,
+        )
+
+        results.append(
+            (
+                score,
+                path,
+                page,
+                chunk_no,
+                text,
+            )
+        )
+
+    results.sort(
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+    print_results(results[:args.top_k], args.format, CORPORA[args.corpus]["type"])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from None

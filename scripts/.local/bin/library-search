@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec python3 \
+    "$HOME/.local/lib/semantic-search/semantic_search.py" \
+    "$HOME/.cache/semantic-index/library" \
+    "$@"

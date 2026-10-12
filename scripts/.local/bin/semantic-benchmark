@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+
+import argparse
+import subprocess
+import sys
+import time
+from pathlib import Path
+from datetime import datetime
+
+
+QUERIES = [
+    "Why can't a voltage divider be used to power a load?",
+    "How do I choose a resistor for an LED connected to a 5 V supply?",
+    "What happens to battery voltage when a motor suddenly draws a large current?",
+    "How should a fuse be selected to protect a DC circuit?",
+    "What is the difference between a buck converter and a linear voltage regulator?",
+    "Why does a linear regulator get hot when reducing voltage?",
+    "How does the internal resistance of a battery affect the voltage under load?",
+    "What does C-rate mean for a lithium battery?",
+    "How can a circuit be protected against reverse battery polarity?",
+    "Why can measuring current incorrectly with a multimeter cause a short circuit?",
+    "How should voltage, current and power be measured in a DC circuit?",
+    "What is the difference between connecting batteries in series and in parallel?",
+    "Why should a decoupling capacitor be placed close to an integrated circuit?",
+    "How does PWM control the average power delivered to a DC motor?",
+    "What causes electrical noise from a DC motor and how can it affect a microcontroller?",
+
+    # Lexical / exact terminology
+    "INA219 current sensor",
+    "I2C pull-up resistor",
+    "LiFePO4 nominal voltage 3.2 V",
+    "MOSFET reverse polarity protection",
+    "buck converter efficiency",
+]
+
+
+def run_search(corpus, query, top_k, model):
+    start = time.perf_counter()
+
+    result = subprocess.run(
+        [
+            "semantic-search",
+            corpus,
+            query,
+            "-k",
+            str(top_k),
+            "--model",
+            model,
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    elapsed = time.perf_counter() - start
+
+    if result.returncode != 0:
+        return None, elapsed, result.stderr.strip()
+
+    return result.stdout.strip(), elapsed, None
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Benchmark semantic retrieval."
+    )
+
+    parser.add_argument(
+        "corpus",
+        nargs="?",
+        default="library",
+    )
+
+    parser.add_argument(
+        "--model",
+        choices=["pplx", "qwen"],
+        default="pplx",
+    )
+
+    parser.add_argument(
+        "-k",
+        "--top-k",
+        type=int,
+        default=10,
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output",
+    )
+
+    args = parser.parse_args()
+
+    if args.output:
+        output = Path(args.output).expanduser()
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        output = Path(
+            f"semantic-benchmark-{args.corpus}-"
+            f"{args.model}-{timestamp}.txt"
+        )
+
+    total_start = time.perf_counter()
+
+    with output.open("w") as f:
+        f.write(f"Corpus: {args.corpus}\n")
+        f.write(f"Model: {args.model}\n")
+        f.write(f"Top-k: {args.top_k}\n")
+        f.write(f"Queries: {len(QUERIES)}\n\n")
+
+        for number, query in enumerate(QUERIES, start=1):
+            print(
+                f"[{number:02}/{len(QUERIES)}] {query}",
+                flush=True,
+            )
+
+            result, elapsed, error = run_search(
+                args.corpus,
+                query,
+                args.top_k,
+                args.model,
+            )
+
+            f.write("=" * 80 + "\n")
+            f.write(f"QUERY {number}\n")
+            f.write(f"{query}\n")
+            f.write(f"time: {elapsed:.2f}s\n")
+            f.write("=" * 80 + "\n\n")
+
+            if error:
+                f.write(f"ERROR\n{error}\n\n")
+                print(f"    ERROR: {error}", file=sys.stderr)
+            else:
+                assert result is not None
+                f.write(result)
+                f.write("\n\n")
+
+            f.flush()
+
+    total = time.perf_counter() - total_start
+
+    print()
+    print(f"done — {len(QUERIES)} queries in {total:.1f}s")
+    print(f"results: {output}")
+
+
+if __name__ == "__main__":
+    main()

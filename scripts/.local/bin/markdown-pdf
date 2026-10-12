@@ -1,0 +1,45 @@
+#!/bin/sh
+# Convert a Markdown note to a printable PDF; stdout contains only its path.
+set -eu
+
+die() {
+    printf 'Errore: %s\n' "$*" >&2
+    exit 1
+}
+
+[ "$#" -ge 1 ] && [ "$#" -le 2 ] || die "uso: markdown-pdf FILE [OUTPUT]"
+for command_name in pandoc lualatex realpath sha256sum mktemp; do
+    command -v "$command_name" >/dev/null 2>&1 || die "comando mancante: $command_name"
+done
+
+source_file=$(realpath -- "$1") || die "percorso non valido: $1"
+[ -f "$source_file" ] && [ -r "$source_file" ] || die "file non leggibile: $source_file"
+if [ "$#" -eq 2 ]; then
+    output_file=$(realpath -m -- "$2")
+else
+    source_hash=$(printf '%s' "$source_file" | sha256sum)
+    source_hash=${source_hash%% *}
+    filename=$(basename -- "$source_file")
+    output_file="${XDG_CACHE_HOME:-$HOME/.cache}/markdown-pdf/$source_hash/${filename%.*}.pdf"
+    output_file=$(realpath -m -- "$output_file")
+fi
+[ "$source_file" != "$output_file" ] || die "il PDF non può sovrascrivere la nota"
+
+mkdir -p -- "$(dirname -- "$output_file")"
+work_dir=$(mktemp -d "$(dirname -- "$output_file")/.markdown-pdf.XXXXXX")
+trap 'rm -rf -- "$work_dir"' EXIT
+trap 'exit 1' HUP INT TERM
+
+cd -- "$(dirname -- "$source_file")"
+pandoc \
+    --from=markdown+lists_without_preceding_blankline \
+    --pdf-engine=lualatex \
+    --variable=papersize:a4 \
+    --variable=fontsize:11pt \
+    --variable=geometry:margin=2cm \
+    --metadata=colorlinks:false \
+    --output="$work_dir/document.pdf" \
+    -- "$source_file" >&2 || die "conversione PDF fallita"
+[ -s "$work_dir/document.pdf" ] || die "nessun PDF generato"
+mv -f -- "$work_dir/document.pdf" "$output_file"
+printf '%s\n' "$output_file"

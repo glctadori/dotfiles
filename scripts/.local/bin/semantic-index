@@ -1,0 +1,502 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import os
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+
+
+# ── Config ──────────────────────────────────────────────────────────────
+
+MODELS = {
+    "pplx": "perplexity/pplx-embed-v1-0.6b",
+    "qwen": "qwen/qwen3-embedding-8b",
+}
+
+CHUNK_TARGET = 3000
+CHUNK_MAX = 4000
+OVERLAP = 400
+MIN_CHUNK = 200
+BATCH_SIZE = 32
+
+CORPORA = {
+    "library": {
+        "type": "pdf",
+        "source": "~/docs/library",
+        "index": "~/.local/share/semantic-index/library",
+    },
+    "wiki": {
+        "type": "markdown",
+        "source": "~/projects/notes",
+        "index": "~/.local/share/semantic-index/wiki",
+    },
+}
+
+
+# ── API ─────────────────────────────────────────────────────────────────
+
+def embed(texts, model):
+    client = Path(__file__).resolve().with_name("agent-embeddings")
+    result = subprocess.run(
+        ["/usr/bin/python3", "-I", str(client)],
+        input=json.dumps({"model": model, "input": texts}),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode:
+        raise RuntimeError(result.stderr.strip() or "embedding service failed")
+    return [np.asarray(vector, dtype=np.float32)
+            for vector in json.loads(result.stdout)["embeddings"]]
+
+
+# ── Database ────────────────────────────────────────────────────────────
+
+def connect_db(path):
+    db = sqlite3.connect(path)
+
+    db.executescript("""
+        PRAGMA journal_mode = WAL;
+
+        CREATE TABLE IF NOT EXISTS files (
+            path        TEXT PRIMARY KEY,
+            mtime_ns    INTEGER NOT NULL,
+            size        INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS chunks (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            path        TEXT NOT NULL,
+            page        INTEGER NOT NULL,
+            chunk_no    INTEGER NOT NULL,
+            text        TEXT NOT NULL,
+            embedding   BLOB NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chunks_path
+        ON chunks(path);
+    """)
+
+    return db
+
+
+# ── PDF extraction ──────────────────────────────────────────────────────
+
+def extract_pdf_pages(path):
+    try:
+        result = subprocess.run(
+            ["pdftotext", "-layout", str(path), "-"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        raise SystemExit(
+            "error: pdftotext not found\n"
+            "install with: sudo apt install poppler-utils"
+        )
+
+    # pdftotext separates pages with form-feed.
+    raw_pages = result.stdout.split("\f")
+
+    for page_no, raw in enumerate(raw_pages, start=1):
+        text = clean_text(raw)
+
+        if text:
+            yield page_no, text
+
+
+def clean_text(text):
+    lines = [line.rstrip() for line in text.splitlines()]
+
+    output = []
+    previous_blank = False
+
+    for line in lines:
+        if not line.strip():
+            if output and not previous_blank:
+                output.append("")
+            previous_blank = True
+        else:
+            output.append(line)
+            previous_blank = False
+
+    return "\n".join(output).strip()
+
+
+# ── Chunking ────────────────────────────────────────────────────────────
+
+def split_long_text(text):
+    """Fallback for a paragraph longer than CHUNK_MAX."""
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = min(start + CHUNK_TARGET, len(text))
+        chunk = text[start:end].strip()
+
+        if len(chunk) >= MIN_CHUNK:
+            chunks.append(chunk)
+
+        if end >= len(text):
+            break
+
+        start = max(0, end - OVERLAP)
+
+    return chunks
+
+
+def chunk_page(text):
+    """
+    Chunk within a single page.
+
+    We deliberately never merge two pages so every result has an
+    unambiguous page number.
+    """
+
+    if len(text) <= CHUNK_MAX:
+        return [text] if len(text) >= MIN_CHUNK else []
+
+    paragraphs = [
+        p.strip()
+        for p in text.split("\n\n")
+        if p.strip()
+    ]
+
+    chunks = []
+    current = ""
+
+    for paragraph in paragraphs:
+        if len(paragraph) > CHUNK_MAX:
+            if current:
+                chunks.append(current.strip())
+                current = ""
+
+            chunks.extend(split_long_text(paragraph))
+            continue
+
+        candidate = (
+            paragraph
+            if not current
+            else current + "\n\n" + paragraph
+        )
+
+        if len(candidate) <= CHUNK_TARGET:
+            current = candidate
+            continue
+
+        if current:
+            chunks.append(current.strip())
+
+            # Preserve a little semantic context.
+            tail = current[-OVERLAP:].strip()
+            candidate = (
+                tail + "\n\n" + paragraph
+                if tail
+                else paragraph
+            )
+
+            if len(candidate) <= CHUNK_MAX:
+                current = candidate
+            else:
+                current = paragraph
+        else:
+            current = paragraph
+
+    if current:
+        chunks.append(current.strip())
+
+    return [
+        chunk
+        for chunk in chunks
+        if len(chunk) >= MIN_CHUNK
+    ]
+
+
+# ── Incremental indexing ────────────────────────────────────────────────
+
+def file_changed(db, path):
+    stat = path.stat()
+
+    row = db.execute(
+        """
+        SELECT mtime_ns, size
+        FROM files
+        WHERE path = ?
+        """,
+        (str(path),),
+    ).fetchone()
+
+    if row is None:
+        return True
+
+    return row != (stat.st_mtime_ns, stat.st_size)
+
+
+def remove_deleted_files(db, existing_paths):
+    indexed_paths = {
+        row[0]
+        for row in db.execute("SELECT path FROM files")
+    }
+
+    deleted = indexed_paths - existing_paths
+
+    if not deleted:
+        return
+
+    with db:
+        for path in sorted(deleted):
+            print(f"remove   {Path(path).name}")
+
+            db.execute(
+                "DELETE FROM chunks WHERE path = ?",
+                (path,),
+            )
+            db.execute(
+                "DELETE FROM files WHERE path = ?",
+                (path,),
+            )
+
+
+def markdown_chunks(path):
+    """Chunk complete lines, keeping their exact 1-based starting line."""
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    start = 0
+    while start < len(lines):
+        end = start
+        size = 0
+        while end < len(lines) and (size < CHUNK_TARGET or end == start):
+            size += len(lines[end])
+            end += 1
+        text = "".join(lines[start:end]).strip()
+        if text:
+            yield start + 1, text
+        if end == len(lines):
+            break
+        next_start = end
+        overlap = 0
+        while next_start > start + 1 and overlap + len(lines[next_start - 1]) <= OVERLAP:
+            next_start -= 1
+            overlap += len(lines[next_start])
+        start = next_start
+
+
+def index_pdf(db, path, model, source_type="pdf"):
+    print(f"index    {path.name}")
+
+    pending = []
+
+    if source_type == "markdown":
+        # In the wiki's separate DB, the legacy page column stores a line.
+        pending = [(line, number, text) for number, (line, text)
+                   in enumerate(markdown_chunks(path), start=1)]
+    else:
+        for page_no, text in extract_pdf_pages(path):
+            for chunk_no, chunk in enumerate(chunk_page(text), start=1):
+                pending.append((page_no, chunk_no, chunk))
+
+    if not pending:
+        print("         no extractable text")
+        return False
+
+    vectors = []
+
+    for start in range(0, len(pending), BATCH_SIZE):
+        batch = pending[start:start + BATCH_SIZE]
+
+        end = min(start + len(batch), len(pending))
+
+        print(
+            f"         embed {start + 1}-{end}/{len(pending)}"
+        )
+
+        vectors.extend(
+            embed(
+                [item[2] for item in batch],
+                model,
+            )
+        )
+
+    # Only replace the old index after extraction + embeddings succeeded.
+    with db:
+        db.execute(
+            "DELETE FROM chunks WHERE path = ?",
+            (str(path),),
+        )
+
+        for (page, chunk_no, text), vector in zip(
+            pending,
+            vectors,
+        ):
+            db.execute(
+                """
+                INSERT INTO chunks (
+                    path,
+                    page,
+                    chunk_no,
+                    text,
+                    embedding
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    str(path),
+                    page,
+                    chunk_no,
+                    text,
+                    vector.tobytes(),
+                ),
+            )
+
+        stat = path.stat()
+
+        db.execute(
+            """
+            INSERT OR REPLACE INTO files (
+                path,
+                mtime_ns,
+                size
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                str(path),
+                stat.st_mtime_ns,
+                stat.st_size,
+            ),
+        )
+
+    print(f"         {len(pending)} chunks")
+    return True
+
+
+# ── Main ────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Build/update a semantic corpus index."
+    )
+
+    parser.add_argument(
+        "corpus",
+        choices=CORPORA.keys(),
+    )
+
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="reindex every document",
+    )
+
+    parser.add_argument(
+        "--model",
+        choices=MODELS.keys(),
+        default="pplx",
+    )
+
+    args = parser.parse_args()
+    model = MODELS[args.model]
+    config = CORPORA[args.corpus]
+
+    source = Path(
+        os.path.expanduser(config["source"])
+    ).resolve()
+
+    index_dir = (
+        Path(os.path.expanduser(config["index"]))
+        / args.model
+    ).resolve()
+
+    if not source.is_dir():
+        raise SystemExit(
+            f"error: corpus directory not found: {source}"
+        )
+
+    index_dir.mkdir(parents=True, exist_ok=True)
+
+    db = connect_db(index_dir / "index.sqlite")
+
+    if config["type"] not in ("pdf", "markdown"):
+        raise SystemExit(
+            f"error: unsupported corpus type: {config['type']}"
+        )
+
+    # Flat library intentionally: no recursive glob.
+    documents = sorted(source.glob("*.pdf" if config["type"] == "pdf" else "*.md"))
+
+    existing_paths = {
+        str(path.resolve())
+        for path in documents
+    }
+
+    remove_deleted_files(db, existing_paths)
+
+    if args.force:
+        changed = documents
+    else:
+        changed = [
+            path
+            for path in documents
+            if file_changed(db, path.resolve())
+        ]
+
+    if not documents:
+        print(f"no documents found in {source}")
+        return
+
+    if not changed:
+        count = db.execute(
+            "SELECT COUNT(*) FROM chunks"
+        ).fetchone()[0]
+
+        print(
+            f"up to date — {len(documents)} documents, "
+            f"{count} chunks"
+        )
+        return
+
+    print(
+        f"{len(changed)} changed / "
+        f"{len(documents)} documents"
+    )
+
+    failures = 0
+
+    for path in changed:
+        path = path.resolve()
+
+        try:
+            if not index_pdf(db, path, model, config["type"]):
+                failures += 1
+
+        except Exception as exc:
+            failures += 1
+            print(
+                f"error    {path.name}: {exc}",
+                file=sys.stderr,
+            )
+
+    total_files = db.execute(
+        "SELECT COUNT(*) FROM files"
+    ).fetchone()[0]
+
+    total_chunks = db.execute(
+        "SELECT COUNT(*) FROM chunks"
+    ).fetchone()[0]
+
+    print()
+    print(
+        f"done — {total_files} PDFs, "
+        f"{total_chunks} chunks"
+    )
+
+    if failures:
+        print(f"warning — {failures} file(s) failed")
+
+
+if __name__ == "__main__":
+    main()
