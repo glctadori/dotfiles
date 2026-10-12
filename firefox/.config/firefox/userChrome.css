@@ -1,0 +1,49 @@
+@import url("dotfiles-palette.css");
+
+:root {
+  --toolbar-bgcolor: var(--df-bg) !important;
+  --toolbar-color: var(--df-fg) !important;
+  --lwt-accent-color: var(--df-bg) !important;
+  --lwt-text-color: var(--df-fg) !important;
+  --toolbar-field-background-color: var(--df-bg) !important;
+  --toolbar-field-color: var(--df-fg) !important;
+  --toolbar-field-focus-background-color: var(--df-bg) !important;
+  --toolbar-field-focus-color: var(--df-fg) !important;
+  --urlbarView-highlight-background: var(--df-selection) !important;
+  --urlbarView-highlight-color: var(--df-fg) !important;
+  --tab-selected-bgcolor: var(--df-selection) !important;
+  --tab-selected-textcolor: var(--df-fg) !important;
+  --tab-min-height: 30px !important;
+  --tab-border-radius: 3px !important;
+  --toolbarbutton-border-radius: 3px !important;
+  --toolbarbutton-hover-background: var(--df-selection) !important;
+  --focus-outline-color: var(--df-accent) !important;
+}
+#navigator-toolbox {
+  background: var(--df-bg) !important;
+  color: var(--df-fg) !important;
+  border: none !important;
+  max-height: 3px !important;
+  min-height: 3px !important;
+  overflow: hidden !important;
+}
+/* Ctrl+L focuses the address bar and reveals the complete toolbox.
+   The top edge also reveals it with the mouse; no animation or blur. */
+#navigator-toolbox:hover,
+#navigator-toolbox:focus-within {
+  max-height: none !important;
+  overflow: visible !important;
+}
+#nav-bar { box-shadow: none !important; padding: 0 4px !important; }
+#TabsToolbar { padding: 0 4px !important; }
+.tab-background { margin-block: 3px !important; box-shadow: none !important; }
+#urlbar-background { border: none !important; box-shadow: none !important; }
+#urlbar[focused] > #urlbar-background {
+  outline: 1px solid var(--df-accent) !important;
+}
+#PersonalToolbar, .titlebar-buttonbox-container, .titlebar-spacer,
+#alltabs-button, #sidebar-main, #sidebar-box, #sidebar-splitter,
+#sidebar-button, #fxa-toolbar-menu-button, #ai-window-toggle,
+#smartwindow-group-tabs-button, #ipprotection-button {
+  display: none !important;
+}

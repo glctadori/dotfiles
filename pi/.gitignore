@@ -1,0 +1,10 @@
+# Keep credentials and runtime data out even if copied here accidentally.
+.pi/agent/*
+!.pi/agent/settings.json
+!.pi/agent/mcp.json
+!.pi/agent/extensions/
+!.pi/agent/skills/
+.pi/agent/extensions/*
+!.pi/agent/extensions/minimal-ui.ts
+.pi/agent/skills/*
+!.pi/agent/skills/web-research/

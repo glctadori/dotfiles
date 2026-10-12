@@ -17,3 +17,4 @@ x-scheme-handler/unknown=brave-browser.desktop
 
 text/plain=nvim.desktop
 text/markdown=nvim.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop

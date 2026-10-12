@@ -1,15 +1,7 @@
 local M = {}
 
 local function root()
-  local file = vim.api.nvim_buf_get_name(0)
-  local start = file ~= "" and vim.fs.dirname(file) or vim.fn.getcwd()
-
-  return vim.fs.root(start, {
-    ".git",
-    "pyproject.toml",
-    "platformio.ini",
-    "CMakeLists.txt",
-  }) or start
+  return require("chat").project_root(0)
 end
 
 vim.keymap.set("n", "S", ":%s//g<Left><Left>", {
@@ -169,6 +161,7 @@ vim.keymap.set({ "n", "v" }, "<leader>cf", function()
   require("conform").format()
 end, { desc = "Format" })
 
+
 -- Gitsigns
 function M.gitsigns(buf)
   local gs = require("gitsigns")
@@ -222,8 +215,34 @@ vim.keymap.set("n", "<leader>ii", function()
   end)
 end, { desc = "Inbox: add" })
 
-vim.keymap.set("n", "<leader>io", "<cmd>edit ~/in/inbox.md<cr>",
+vim.keymap.set("n", "<leader>io", "<cmd>edit ~/projects/notes/inbox.md<cr>",
   { desc = "Inbox: open" })
 
+vim.keymap.set("n", "<leader>ss", function()
+  Snacks.picker.lines()
+end, { desc = "Search current buffer" })
+
+vim.keymap.set({ "n", "x" }, "<leader>sk", function()
+  require("knowledge_search").search()
+end, { desc = "Search library / wiki" })
+
+vim.keymap.set("n", "<leader>sr", function()
+  require("knowledge_search").show()
+end, { desc = "Reopen knowledge search results" })
+
+vim.keymap.set({ "n", "x" }, "<leader>sw", function()
+  require("knowledge_search").search("wiki")
+end, { desc = "Semantic search wiki" })
+
+vim.keymap.set({ "n", "x" }, "<leader>sl", function()
+  require("knowledge_search").search("library")
+end, { desc = "Semantic search library" })
+
+vim.keymap.set("n", "<leader>sh", function()
+  require("knowledge_search").history()
+end, { desc = "Knowledge search history" })
+
+-- Buffer-local wiki mappings override window navigation only inside the wiki.
+require("wiki_links").setup()
 
 return M

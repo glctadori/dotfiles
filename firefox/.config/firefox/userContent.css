@@ -1,0 +1,5 @@
+@import url("dotfiles-palette.css");
+/* Only style empty browser pages, never websites. */
+@-moz-document url("about:blank"), url("about:newtab"), url("about:home") {
+  :root, html, body { background: var(--df-bg) !important; color: var(--df-fg) !important; }
+}

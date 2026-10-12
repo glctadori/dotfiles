@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""Connect Firefox profiles to the dotfiles theme, preserving existing CSS."""
+import configparser
+import datetime
+from pathlib import Path
+
+home = Path.home()
+config = home / '.config'
+themes = config / 'themes'
+source = config / 'firefox' / 'userChrome.css'
+if not source.is_file():
+    raise SystemExit('Stow the firefox package first: stow --restow firefox')
+
+for theme in themes.iterdir():
+    if theme.name == 'current' or not (theme / 'kitty.conf').is_file():
+        continue
+    colors = {}
+    for line in (theme / 'kitty.conf').read_text().splitlines():
+        fields = line.split()
+        if len(fields) == 2 and fields[1].startswith('#'):
+            colors[fields[0]] = fields[1]
+    colors.setdefault('selection_background', colors.get('color8', colors['background']))
+    keys = {'bg': 'background', 'fg': 'foreground',
+            'selection': 'selection_background', 'accent': 'color4'}
+    css = ':root {\n' + ''.join(
+        f'  --df-{name}: {colors[key]};\n' for name, key in keys.items()
+    ) + '}\n'
+    (theme / 'firefox.css').write_text(css)
+
+roots = [config / 'mozilla/firefox', home / '.mozilla/firefox',
+         home / 'snap/firefox/common/.mozilla/firefox',
+         home / '.var/app/org.mozilla.firefox/.mozilla/firefox']
+count = 0
+for root in roots:
+    ini = root / 'profiles.ini'
+    if not ini.is_file():
+        continue
+    profiles = configparser.ConfigParser()
+    profiles.read(ini)
+    for section in profiles.sections():
+        if not section.startswith('Profile'):
+            continue
+        path = Path(profiles[section]['Path'])
+        if profiles[section].get('IsRelative', '1') == '1':
+            path = root / path
+        if not path.is_dir():
+            continue
+        chrome = path / 'chrome'
+        chrome.mkdir(exist_ok=True)
+        for name, target in [('dotfiles-minimal.css', source),
+                             ('dotfiles-content.css', source.with_name('userContent.css')),
+                             ('dotfiles-palette.css', themes / 'current/firefox.css')]:
+            link = chrome / name
+            if link.exists() and not link.is_symlink():
+                raise SystemExit(f'Refusing to overwrite {link}')
+            link.unlink(missing_ok=True)
+            link.symlink_to(target)
+        user_css = chrome / 'userChrome.css'
+        existing = user_css.read_text() if user_css.exists() else ''
+        rule = '@import url("dotfiles-minimal.css");'
+        if rule not in existing:
+            user_css.write_text(rule + '\n' + existing)
+        content_css = chrome / 'userContent.css'
+        existing_content = content_css.read_text() if content_css.exists() else ''
+        content_rule = '@import url("dotfiles-content.css");'
+        if content_rule not in existing_content:
+            content_css.write_text(content_rule + '\n' + existing_content)
+        prefs = path / 'user.js'
+        existing = prefs.read_text() if prefs.exists() else ''
+        marker = '// BEGIN dotfiles Firefox appearance'
+        end = '// END dotfiles Firefox appearance'
+        if marker in existing and end in existing:
+            before, remainder = existing.split(marker, 1)
+            existing = before + remainder.split(end, 1)[1].lstrip('\n')
+        elif existing:
+            stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+            (path / f'user.js.backup-{stamp}').write_text(existing)
+        block = '\n'.join([
+            marker,
+            'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);',
+            'user_pref("browser.compactmode.show", true);',
+            'user_pref("browser.uidensity", 1);',
+            'user_pref("browser.tabs.inTitlebar", 1);',
+            'user_pref("browser.toolbars.bookmarks.visibility", "never");',
+            'user_pref("browser.startup.page", 0);',
+            'user_pref("browser.startup.homepage", "about:blank");',
+            'user_pref("browser.newtabpage.enabled", false);',
+            'user_pref("browser.newtabpage.activity-stream.showSearch", false);',
+            'user_pref("browser.newtabpage.activity-stream.feeds.topsites", false);',
+            'user_pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);',
+            'user_pref("browser.newtabpage.activity-stream.feeds.section.highlights", false);',
+            'user_pref("browser.newtabpage.activity-stream.showSponsored", false);',
+            'user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);',
+            'user_pref("browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons", false);',
+            'user_pref("browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features", false);',
+            'user_pref("browser.aboutwelcome.enabled", false);',
+            'user_pref("browser.shell.checkDefaultBrowser", false);',
+            'user_pref("browser.ml.chat.enabled", false);',
+            'user_pref("browser.ml.chat.sidebar", false);',
+            'user_pref("browser.tabs.verticalTabs", false);',
+            'user_pref("sidebar.visibility", "hide-on-close");',
+            'user_pref("browser.urlbar.suggest.quicksuggest.sponsored", false);',
+            'user_pref("browser.urlbar.suggest.quicksuggest.nonsponsored", false);',
+            end, '',
+        ])
+        prefs.write_text(existing.rstrip() + '\n\n' + block)
+        print(f'Configured: {path}')
+        count += 1
+if not count:
+    raise SystemExit('No Firefox profiles found. Start Firefox once, then rerun.')
+print('Restart Firefox to apply. Rerun after adding or editing theme palettes.')

@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Quota Codex rimanente per Waybar, tramite app-server JSON-RPC."""
+import datetime
+import json
+import math
+import os
+from pathlib import Path
+import selectors
+import shutil
+import subprocess
+import time
+
+
+def read_limits():
+    binary = Path.home() / '.codex/packages/standalone/current/bin/codex'
+    command = str(binary) if binary.is_file() else shutil.which('codex')
+    if not command:
+        raise RuntimeError('Codex non installato')
+    process = subprocess.Popen(
+        [command, 'app-server', '--stdio'], stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+    )
+    deadline = time.monotonic() + 20
+    buffer = b''
+    selector = selectors.DefaultSelector()
+    selector.register(process.stdout, selectors.EVENT_READ)
+
+    def send(message):
+        process.stdin.write((json.dumps(message) + '\n').encode())
+        process.stdin.flush()
+
+    def receive(request_id):
+        nonlocal buffer
+        while True:
+            while b'\n' in buffer:
+                line, buffer = buffer.split(b'\n', 1)
+                message = json.loads(line)
+                if message.get('id') == request_id:
+                    if 'error' in message:
+                        raise RuntimeError('Quota Codex non disponibile: verifica il login')
+                    return message['result']
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not selector.select(remaining):
+                raise TimeoutError('Codex non risponde')
+            chunk = os.read(process.stdout.fileno(), 65536)
+            if not chunk:
+                raise RuntimeError('App-server Codex terminato')
+            buffer += chunk
+
+    try:
+        send({'id': 1, 'method': 'initialize', 'params': {
+            'clientInfo': {'name': 'waybar_codex', 'version': '1.0.0'},
+        }})
+        receive(1)
+        send({'method': 'initialized', 'params': {}})
+        send({'id': 2, 'method': 'account/rateLimits/read'})
+        return receive(2)
+    finally:
+        selector.close()
+        process.stdin.close()
+        process.terminate()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+        process.stdout.close()
+
+
+def render(result):
+    limits = (result.get('rateLimitsByLimitId') or {}).get('codex') or result.get('rateLimits') or {}
+    values = []
+    tooltip = ['Codex · quota rimanente']
+    for key in ('primary', 'secondary'):
+        window = limits.get(key)
+        if not window or window.get('usedPercent') is None:
+            continue
+        remaining = max(0, min(100, 100 - float(window['usedPercent'])))
+        values.append(math.floor(remaining))
+        minutes = window.get('windowDurationMins')
+        label = 'Settimanale' if minutes == 10080 else (
+            f'{minutes // 60} ore' if minutes and minutes % 60 == 0 else
+            f'{minutes} minuti' if minutes else key
+        )
+        tooltip.append(f'{label}: {remaining:g}% disponibile')
+        if window.get('resetsAt'):
+            reset = datetime.datetime.fromtimestamp(window['resetsAt']).astimezone()
+            tooltip.append(f'  Reset: {reset:%d/%m %H:%M}')
+    if not values:
+        raise RuntimeError('Nessuna quota percentuale disponibile per questo account')
+    lowest = min(values)
+    return {
+        'text': ' / '.join(f'{value}%' for value in values),
+        'tooltip': '\n'.join(tooltip), 'percentage': lowest,
+        'class': 'critical' if lowest <= 10 else 'warning' if lowest <= 25 else 'normal',
+    }
+
+
+if __name__ == '__main__':
+    try:
+        output = render(read_limits())
+    except (OSError, ValueError, RuntimeError, TimeoutError, KeyError) as error:
+        output = {'text': '—', 'tooltip': f'Codex · {error}', 'class': 'unavailable'}
+    print(json.dumps(output, ensure_ascii=False))

@@ -13,6 +13,7 @@
     ],
 
     "modules-right": [
+        "custom/codex",
         "custom/openrouter",
         "network",
         "pulseaudio",
@@ -30,10 +31,18 @@
         "max-length": 70
     },
 
+    "custom/codex": {
+        "exec": "~/.local/bin/waybar-codex",
+        "return-type": "json",
+        "format": "Codex {}",
+        "interval": 60,
+        "tooltip": true
+    },
+
     "custom/openrouter": {
         "exec": "~/.local/bin/waybar-openrouter",
         "return-type": "json",
-        "interval": 300,
+        "interval": 30,
         "tooltip": true
     },
 

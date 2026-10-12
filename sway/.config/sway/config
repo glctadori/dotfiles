@@ -80,7 +80,7 @@ bindsym $mod+Return exec $term
 bindsym $mod+d exec $menu
 bindsym $mod+Shift+d exec palette
 bindsym $mod+w exec $browser
-bindsym $mod+n exec $term -e nvim -c VimwikiIndex
+bindsym $mod+n exec $term -e nvim ~/projects/notes/inbox.md
 bindsym $mod+r exec $term -e yazi
 bindsym $mod+m exec $term -e ncmpcpp
 bindsym $mod+e exec $term -e neomutt

@@ -2,9 +2,9 @@
 
 set -eu
 
-inbox=${INBOX_FILE:-"$HOME/in/inbox.md"}
+inbox=${INBOX_FILE:-"$HOME/projects/notes/inbox.md"}
 
-# Assicura che ~/in e inbox.md esistano.
+# Assicura che la directory di destinazione e inbox.md esistano.
 mkdir -p "$(dirname "$inbox")"
 [ -f "$inbox" ] || : > "$inbox"
 

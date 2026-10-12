@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+ROOT="$HOME/projects"
+errors=0
+
+[[ -d "$ROOT" ]] || exit 0
+
+while IFS= read -r -d '' gitdir; do
+    repo="${gitdir%/.git}"
+
+    branch=$(git -C "$repo" symbolic-ref --quiet --short HEAD) || continue
+
+    upstream=$(git -C "$repo" rev-parse \
+        --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) || continue
+
+    ahead=$(git -C "$repo" rev-list --count "${upstream}..HEAD") || continue
+
+    if (( ahead > 0 )); then
+        echo "Pushing $repo ($branch): $ahead commit"
+        if ! git -C "$repo" push; then
+            echo "ERROR: push fallito per $repo" >&2
+            errors=1
+        fi
+    fi
+done < <(find "$ROOT" -type d -name .git -prune -print0)
+
+exit "$errors"

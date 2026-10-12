@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "parallel": {
+      "url": "https://search.parallel.ai/mcp",
+      "exposure": "direct",
+      "description": "Search the public web and read relevant passages from pages and documents, including PDFs."
+    }
+  }
+}

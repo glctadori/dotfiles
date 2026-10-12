@@ -44,7 +44,7 @@ echo 'deb [signed-by=/usr/share/keyrings/yazi-keyring.gpg] https://yazi-rs.githu
 sudo apt update
 sudo apt install -y \
     sway kitty mako-notifier libnotify-bin pipewire pipewire-pulse wireplumber \
-    neovim pass stow build-essential udiskie tree-sitter-cli xdg-desktop-portal \
+    neovim pass bubblewrap stow build-essential udiskie tree-sitter-cli xdg-desktop-portal \
     mesa-utils vainfo intel-media-va-driver-non-free restic mpv intel-gpu-tools \
     network-manager keyd lazygit unzip hyprland hyprpolkitagent hyprland-qtutils \
     hyprpaper mpd ncmpcpp mpc dnscrypt-proxy zsh zsh-syntax-highlighting \
@@ -53,8 +53,8 @@ sudo apt install -y \
     libcanberra-gtk3-module sound-theme-freedesktop rfkill starship socat flatpak \
     newsboat pulsemixer tlp thermald btm ripgrep fd-find isync msmtp neomutt \
     yazi cups smartmontools nvme-cli fwupd libreoffice pipx python3-venv \
-    plymouth-themes firefox jq xdg-user-dirs desktop-file-utils
-
+    plymouth-themes firefox jq xdg-user-dirs desktop-file-utils \
+    texlive-luatex texlive-latex-extra texlive-lang-italian latexmk pandoc
 flatpak remote-add --if-not-exists flathub \
     https://flathub.org/repo/flathub.flatpakrepo
 flatpak install -y flathub \

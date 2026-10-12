@@ -7,32 +7,8 @@ sleep 0.5
 
 # ── VIDEO ────────────────────────────────────────────────
 
-INTERNAL="$(
-    hyprctl monitors all -j |
-        jq -r '.[] | select(.name | startswith("eDP-")) | .name' |
-        head -n1
-)"
-
-EXTERNAL="$(
-    hyprctl monitors all -j |
-        jq -r '.[] | select(.name | startswith("eDP-") | not) | .name' |
-        head -n1
-)"
-
-if [[ -n "$INTERNAL" && -n "$EXTERNAL" ]]; then
-    # Esterno alla sua risoluzione preferita.
-    hyprctl keyword monitor "$EXTERNAL,preferred,auto,1"
-
-    sleep 0.3
-
-    # Laptop = copia dell'esterno.
-    hyprctl keyword monitor "$INTERNAL,preferred,auto,1,mirror,$EXTERNAL"
-else
-    # Nessun monitor esterno: ripristina automaticamente il pannello.
-    if [[ -n "$INTERNAL" ]]; then
-        hyprctl keyword monitor "$INTERNAL,preferred,auto,1.5"
-    fi
-fi
+# Usa la stessa configurazione e lo stesso lock del comando F2.
+"$(dirname "$0")/display-monitor" || exit $?
 
 
 # ── AUDIO ────────────────────────────────────────────────

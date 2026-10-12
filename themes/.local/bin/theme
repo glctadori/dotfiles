@@ -39,6 +39,23 @@ done
 
 mode=$(cat "$THEMES/current/mode")
 
+# Let Claude Code's LaTeX plugin detect the system theme while theme stays auto.
+python3 - "$mode" <<'PYCLAUDE'
+import json
+import os
+import pathlib
+import sys
+
+mode = sys.argv[1]
+if mode in ('light', 'dark'):
+    config_dir = pathlib.Path(os.environ.get('CLAUDE_CONFIG_DIR') or pathlib.Path.home() / '.claude')
+    settings = config_dir / 'settings.json'
+    if settings.exists():
+        data = json.loads(settings.read_text())
+        data.setdefault('env', {})['COLORFGBG'] = '0;15' if mode == 'light' else '15;0'
+        settings.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
+PYCLAUDE
+
 case "$mode" in
     dark)
         gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'

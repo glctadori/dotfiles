@@ -20,7 +20,7 @@ fi
 destination=$(
     {
         printf '%s\n' "${HOME:?}"
-        fd --hidden --type d --exclude .git . "$HOME"
+        fd-find --hidden --type d --exclude .git . "$HOME"
     } | fzf --prompt='Directory > ' --height=100% --reverse
 ) || exit 0
 

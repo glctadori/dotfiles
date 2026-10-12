@@ -21,14 +21,7 @@ process_event() {
         return
     fi
 
-    # USB
-    if [[ "$event" == *"SUBSYSTEM=usb"* ]]; then
-        if [[ "$event" == *"ACTION=add"* ]]; then
-            sound added
-        elif [[ "$event" == *"ACTION=remove"* ]]; then
-            sound removed
-        fi
-    fi
+    # USB e HDMI non producono suoni: solo l'alimentazione.
 }
 
 event=""
@@ -42,4 +35,4 @@ while IFS= read -r line; do
     else
         event+="$line"$'\n'
     fi
-done < <(udevadm monitor --udev --property)
+done < <(udevadm monitor --udev --property --subsystem-match=power_supply)

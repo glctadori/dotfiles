@@ -47,6 +47,7 @@ window#waybar {
 }
 
 #network,
+#custom-codex,
 #custom-pomodoro,
 #custom-agent-usage,
 #custom-project,
@@ -61,3 +62,4 @@ window#waybar {
 #custom-pomodoro.inactive {
     padding: 0;
 }
+

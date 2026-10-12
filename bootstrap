@@ -33,6 +33,7 @@ run "Fonts"    "$ROOT/_setup/fonts"
 run "Development tools" "$ROOT/_setup/dev"
 run "Brave"    "$ROOT/_setup/brave"
 run "Mail"     "$ROOT/_setup/mail"
+run "Printer"     "$ROOT/_setup/printer"
 
 echo
 echo "Bootstrap complete."

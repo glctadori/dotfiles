@@ -46,8 +46,9 @@ choose_file() {
     fi
 
     find \
-        "$HOME/Downloads" \
-        "$HOME/Documents" \
+        "$HOME/in" \
+        "$HOME/projects" \
+        "$HOME/docs" \
         -type f \
         -iname '*.pdf' \
         2>/dev/null |
@@ -213,6 +214,7 @@ work_dir=$(
 
 trap 'rm -rf -- "$work_dir"' EXIT HUP INT TERM
 
+source_pdf="$work_dir/source.pdf"
 selected_pdf="$work_dir/selected.pdf"
 front_pdf="$work_dir/front.pdf"
 back_pdf="$work_dir/back.pdf"
@@ -221,9 +223,14 @@ back_pdf="$work_dir/back.pdf"
 # Estrazione pagine richieste
 #
 
+# Il profilo AppArmor di qpdf non permette di leggere ~/.cache.
+# Copia il documento nella directory temporanea prima di estrarlo.
+cp -- "$file" "$source_pdf" ||
+    die "non riesco a copiare il PDF nella directory temporanea"
+
 qpdf \
     --empty \
-    --pages "$file" "$pages" \
+    --pages "$source_pdf" "$pages" \
     -- "$selected_pdf" ||
     die "non riesco a estrarre le pagine richieste"
 

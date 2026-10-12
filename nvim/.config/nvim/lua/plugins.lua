@@ -21,6 +21,31 @@ local parsers = {
 
 return {
   {
+    "folke/which-key.nvim",
+    event = "VeryLazy",
+    opts = {
+      preset = "classic",
+      delay = 250,
+      triggers = { { "<leader>", mode = { "n", "x" } } },
+      spec = {
+        {
+          mode = { "n", "x" },
+          { "<leader>a", group = "AI" },
+          { "<leader>b", group = "Buffers" },
+          { "<leader>c", group = "Code" },
+          { "<leader>e", group = "Explorer" },
+          { "<leader>f", group = "Files" },
+          { "<leader>g", group = "Git" },
+          { "<leader>i", group = "Inbox" },
+          { "<leader>q", group = "Quit" },
+          { "<leader>s", group = "Search" },
+          { "<leader>w", group = "Windows / Wiki" },
+          { "<leader>x", group = "Diagnostics" },
+        },
+      },
+    },
+  },
+  {
     "neanias/everforest-nvim",
     lazy = false,
     priority = 1100,
@@ -76,11 +101,6 @@ return {
 
             local modified = vim.bo.modified and " ●" or ""
 
-            local ai = ""
-            if vim.g.ai_status and vim.g.ai_status ~= "" then
-              ai = "✦ " .. vim.g.ai_status
-            end
-
             return statusline.combine_groups({
               {
                 hl = mode_hl,
@@ -105,7 +125,7 @@ return {
 
               {
                 hl = "MiniStatuslineDevinfo",
-                strings = { ai },
+                strings = { package.loaded.chat and package.loaded.chat.statusline() or "" },
               },
 
               {
@@ -168,10 +188,10 @@ return {
   },
   {
     "MeanderingProgrammer/render-markdown.nvim",
-    ft = { "markdown", "markdown.mdx", "vimwiki", "codecompanion" },
+    ft = { "markdown", "markdown.mdx", "vimwiki" },
     dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-mini/mini.icons" },
     opts = {
-      file_types = { "markdown", "markdown.mdx", "vimwiki", "codecompanion" },
+      file_types = { "markdown", "markdown.mdx", "vimwiki" },
       latex = {
         enabled = false,
         --   converter = { "utftex", "latex2text" },
@@ -205,6 +225,7 @@ return {
         },
       }
       vim.g.vimwiki_global_ext = 0
+      vim.g.vimwiki_key_mappings = { html = 0 }
     end,
   },
   {
@@ -251,5 +272,24 @@ return {
     dependencies = { "nvim-lua/plenary.nvim" },
     cmd = "Neogit",
     opts = {},
+  },
+  -- AI: pi agent (OpenRouter, DeepSeek V4.1 Flash, thinking off).
+  -- tools = {} keeps read/edit/write (always enabled) and disables bash.
+  -- {
+  --   "pablopunk/pi.nvim",
+  --   opts = {
+  --     provider = "openrouter",
+  --     model = "deepseek/deepseek-v4.1-flash",
+  --     thinking = "off",
+  --     system_prompt = "You are a helpful assistant.",
+  --     append_system_prompt = "Always respond concisely.",
+  --     tools = {},
+  --     skills = false,
+  --     extensions = false,
+  --   },
+  -- },
+  {
+    "alex35mil/pi.nvim",
+    config = true,
   },
 }

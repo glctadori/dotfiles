@@ -1,9 +1,11 @@
 require("options")
 require("bootstrap")
 require("terminal")
-require("chat")
-require("keymaps")
 require("sudo")
+require("chat")
+require("palette")
+require("keymaps")
+require("markdown_pdf").setup()
 
 -- RPC socket for external commands
 local socket_dir = vim.fn.expand("~/.cache/nvim/sockets")
