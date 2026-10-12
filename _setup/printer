@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PRINTER_NAME="Epson_ET_2650"
+PRINTER_URI='usb://EPSON/ET-2650%20Series?serial=583250473136393101&interface=1'
+PRINTER_DRIVER='escpr:0/cups/model/epson-inkjet-printer-escpr/Epson-ET-2650_Series-epson-escpr-en.ppd'
+
+echo "==> Installazione CUPS, Epson ESC/P-R e qpdf..."
+sudo apt update
+sudo apt install -y \
+    cups \
+    printer-driver-escpr \
+    qpdf
+
+echo "==> Abilito CUPS..."
+sudo systemctl enable --now cups.service
+
+echo "==> Riservo la Epson ET-2650 al driver USB diretto..."
+sudo install -d -m 755 /etc/ipp-usb/quirks
+printf '%s\n' '# Epson ET-2650: usa CUPS con il driver ESC/P-R via USB.' \
+    '[04b8:1121]' 'blacklist = true' |
+    sudo tee /etc/ipp-usb/quirks/epson-et-2650.conf >/dev/null
+if systemctl is-active --quiet ipp-usb.service; then
+    sudo systemctl restart ipp-usb.service
+fi
+
+echo "==> Verifico driver Epson ET-2650..."
+if ! lpinfo -m 2>/dev/null | grep -Fq "$PRINTER_DRIVER"; then
+    echo "ERRORE: driver ESC/P-R per ET-2650 non trovato."
+    exit 1
+fi
+
+echo "==> Verifico stampante USB..."
+if ! sudo lpinfo -v | grep -Fq "$PRINTER_URI"; then
+    echo "ERRORE: Epson ET-2650 non rilevata via USB."
+    echo "Accendila, collegala e rilancia lo script."
+    exit 1
+fi
+
+echo "==> Creo/aggiorno coda $PRINTER_NAME..."
+sudo lpadmin \
+    -p "$PRINTER_NAME" \
+    -E \
+    -v "$PRINTER_URI" \
+    -m "$PRINTER_DRIVER"
+
+echo "==> Imposto come stampante predefinita..."
+lpoptions -d "$PRINTER_NAME"
+
+echo
+echo "==> Configurazione completata."
+echo
+lpstat -p "$PRINTER_NAME" -d
+
+echo
+echo "Driver:"
+lpoptions -p "$PRINTER_NAME" -l >/dev/null &&
+    echo "  Epson ESC/P-R OK"
+
+echo
+echo "Per una stampa di prova:"
+echo "  lp -d $PRINTER_NAME /usr/share/cups/data/default-testpage.pdf"
