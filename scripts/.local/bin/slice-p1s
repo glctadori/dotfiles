@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Slice headless per Bambu Lab P1S (ugello 0.4) con OrcaSlicer Flatpak.
+# Uso: slice-p1s modello.stl [outdir] [-- altre opzioni orca, es. --layer-height=0.16]
+# Default: PETG (Bambu PETG Basic), 0.20mm Standard. Override: PROCESS=... FILAMENT=...
+set -euo pipefail
+
+model="${1:?uso: slice-p1s modello.stl [outdir] [-- opzioni orca]}"
+shift
+out="$PWD/${model##*/}.out"
+if [[ $# -gt 0 && $1 != -* ]]; then out="$(realpath -m "$1")"; shift; fi
+[[ ${1:-} == -- ]] && shift
+
+app=com.orcaslicer.OrcaSlicer
+printer="Bambu Lab P1S 0.4 nozzle"
+process="${PROCESS:-0.20mm Standard @BBL X1C}"
+filament="${FILAMENT:-Bambu PETG Basic @BBL X1C}"
+
+presets="$(find ~/.claude/plugins/cache/earthtojake/text-to-cad -path '*/skills/gcode/scripts/orca_presets.py' | sort -V | tail -n1)"
+[[ -n $presets ]] || { echo "plugin text-to-cad non installato" >&2; exit 1; }
+
+mkdir -p "$out"
+model="$(realpath "$model")"
+python3 -I "$presets" --profiles "$HOME/.var/app/$app/config/OrcaSlicer/system" \
+    --printer "$printer" --process "$process" --filament "$filament" --out "$out/presets" >/dev/null
+
+flatpak run --filesystem="$(dirname "$model")" --filesystem="$out" --command=orca-slicer "$app" "$model" \
+    --load-settings "$out/presets/process.json;$out/presets/printer.json" \
+    --load-filaments "$out/presets/filament-1.json" \
+    --arrange 1 --slice 0 --outputdir "$out" --export-3mf "${model##*/}.gcode.3mf" "$@"
+
+echo "Output in $out. Controlla: grep -E '^; (printer_model|filament_type|nozzle_temperature|hot_plate_temp) =' $out/plate_1.gcode"
