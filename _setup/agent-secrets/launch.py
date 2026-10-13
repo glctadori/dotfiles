@@ -10,27 +10,15 @@ import sys
 CONFIG = Path("/etc/agent-secrets/config.json")
 
 
-def claude_executable(home):
-    """Newest managed Claude Code build; ~/.local/bin/claude is this launcher."""
-    versions = home / ".local/share/claude/versions"
-    candidates = [p for p in versions.glob("*") if p.is_file()] if versions.is_dir() else []
-    if not candidates:
-        raise ValueError("agent executable is missing; install Claude Code first")
-    key = lambda p: tuple(int(x) if x.isdigit() else 0 for x in p.name.split("."))
-    return str(max(candidates, key=key))
-
-
 def build_command(config, mode, arguments, environ):
     home = Path(config["home"])
-    if os.getuid() != config["uid"] or mode not in ("codex", "pi", "claude", "check"):
+    if os.getuid() != config["uid"] or mode not in ("codex", "pi", "check"):
         raise ValueError("agent launcher is not configured for this user or command")
     if mode == "codex":
         program = [str(home / ".codex/packages/standalone/current/bin/codex"),
                    "--no-daemon", "--ask-for-approval", "never", "--sandbox", "danger-full-access"]
     elif mode == "pi":
         program = [str(home / ".pi/agent/bin/pi")]
-    elif mode == "claude":
-        program = [claude_executable(home)]
     else:
         program = ["/usr/bin/python3", "-I", "/usr/local/lib/agent-secrets/check.py"]
     if not Path(program[0]).is_file() or not os.access(program[0], os.X_OK):

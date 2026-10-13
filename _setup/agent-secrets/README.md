@@ -1,6 +1,6 @@
 # Agent secret isolation
 
-Codex, Pi and Claude Code share a Bubblewrap launcher. They keep network access and normal
+Codex and Pi share a Bubblewrap launcher. They keep network access and normal
 access to the filesystem, while password-store and GPG directories are empty,
 read-only mounts. Host processes, runtime control sockets, temporary files,
 and host devices are isolated. DNS and the embeddings broker remain reachable.
@@ -18,7 +18,7 @@ Run from your normal terminal, outside Codex and Pi:
 Requires installed Codex, Pi, Bubblewrap, systemd, pass, and sudo. Unlock GPG
 first if needed. The setup asks for sudo, imports only the first line of
 `api/openrouter`, installs protected service code/configuration, starts a system
-socket, and replaces the existing Codex, Pi and Claude Code launcher symlinks. Regular files
+socket, and replaces the existing Codex and Pi launcher symlinks. Regular files
 at those launcher paths are never overwritten. Restart existing agent sessions.
 
 The managed upstream binaries remain in `~/.codex/packages/standalone/current`
@@ -93,8 +93,5 @@ to user files subsequently executed outside the sandbox. Broad file access
 allows persistent edits; review them before running them outside the sandbox.
 Do not grant agents general sudo or an unrestricted host execution channel.
 
-Claude Code runs from the newest build in `~/.local/share/claude/versions`; its
-self-updater adds new builds there and the launcher picks the newest on each start.
-If the updater replaces `~/.local/bin/claude`, rerun the setup. D-Bus, Wayland and
-SSH-agent are unavailable inside, so image paste from the clipboard and
-SSH-key git remotes do not work in the session.
+Claude Code does not use this launcher: it relies on its own sandbox and deny rules
+(see `_setup/claude-code/`). D-Bus, Wayland and SSH-agent are unavailable inside Codex and Pi.

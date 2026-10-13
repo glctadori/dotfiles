@@ -1,2 +1,4 @@
 #!/bin/sh
-exec /usr/bin/python3 -I /usr/local/lib/agent-secrets/launch.py claude "$@"
+# Ultima build gestita dall'updater di Claude Code; la sandbox e' nelle settings (_setup/claude-code).
+dir="$HOME/.local/share/claude/versions"
+exec "$dir/$(ls "$dir" | sort -V | tail -n1)" "$@"

@@ -132,6 +132,9 @@ and key rotation; semantic search and indexing need no confirmations.
 See [_setup/agent-secrets/README.md](_setup/agent-secrets/README.md) for the boundary,
 verification, and maintenance commands.
 
+Claude Code usa la propria sandbox: `./_setup/setup-claude-code` installa le managed settings
+(`/etc/claude-code/managed-settings.json`, root-owned) con le regole su pass e gnupg.
+
 ## Convention
 
 ```text

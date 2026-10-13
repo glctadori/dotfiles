@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Installa le managed settings di Claude Code (root-owned: l'agente non puo' allentarle).
+set -euo pipefail
+
+src="$(cd "$(dirname "$0")" && pwd)/claude-code/managed-settings.json"
+sudo install -d -m 755 -o root -g root /etc/claude-code
+sudo install -m 644 -o root -g root "$src" /etc/claude-code/managed-settings.json
+
+# Ubuntu limita gli user namespace: i figli di bwrap perdono le capability e il
+# secondo livello del sandbox di Claude (apply-seccomp) fallisce.
+echo 'kernel.apparmor_restrict_unprivileged_userns = 0' |
+    sudo tee /etc/sysctl.d/60-userns.conf >/dev/null
+sudo sysctl -q --system
+
+# Il profilo AppArmor bwrap-userns-restrict toglie le capability ai figli di
+# /usr/bin/bwrap anche con il sysctl a 0: lo disabilito in modo persistente.
+profile=/etc/apparmor.d/bwrap-userns-restrict
+if [ -e "$profile" ]; then
+    sudo ln -sf "$profile" /etc/apparmor.d/disable/
+    sudo apparmor_parser -R "$profile" 2>/dev/null || true
+fi
+
+echo "Installato /etc/claude-code/managed-settings.json e /etc/sysctl.d/60-userns.conf; disabilitato bwrap-userns-restrict. Riavvia le sessioni di Claude Code."
