@@ -1,0 +1,39 @@
+#!/bin/sh
+# Apre kitty nella directory della finestra kitty a fuoco.
+#   term-here             terminale nella stessa directory
+#   term-here agent [cmd] agente (default claude) nella radice del progetto in ~/projects;
+#                         se la directory non e' un progetto, chiede la cartella con fuzzel
+proj="$HOME/projects"
+
+win=$(hyprctl activewindow -j 2>/dev/null)
+pid=$(echo "$win" | jq -r '.pid // empty')
+class=$(echo "$win" | jq -r '.class // empty')
+
+cwd=
+if [ "$class" = kitty ]; then
+    # kitty --single-instance: tutte le finestre hanno lo stesso pid, serve il remote control
+    cwd=$(kitten @ --to "unix:@kitty-$pid" ls 2>/dev/null | jq -r '
+      [.[] | select(.is_focused)][0] // empty
+      | .tabs[] | select(.is_focused) | .windows[] | select(.is_focused) | .cwd' 2>/dev/null)
+elif [ -n "$pid" ]; then
+    # altri terminali (come omarchy-cmd-terminal-cwd): cwd della shell figlia
+    shell_pid=$(pgrep -P "$pid" | tail -n1)
+    [ -n "$shell_pid" ] && cwd=$(readlink -f "/proc/$shell_pid/cwd" 2>/dev/null)
+fi
+[ -d "$cwd" ] || cwd="$HOME"
+
+if [ "$1" != agent ]; then
+    exec kitty --single-instance --directory "$cwd"
+fi
+
+shift
+case "$cwd" in
+    "$proj"/*) dir="$proj/$(echo "${cwd#"$proj"/}" | cut -d/ -f1)" ;;
+    *)
+        name=$(ls -1 "$proj" | fuzzel --dmenu -p 'progetto: ') || exit 0
+        [ -n "$name" ] && dir="$proj/$name" || exit 0
+        ;;
+esac
+
+[ $# -gt 0 ] || set -- claude
+exec kitty --single-instance --directory "$dir" "$@"
