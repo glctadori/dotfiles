@@ -16,7 +16,13 @@ data="$(pass show "$entry")"
 password="$(printf '%s\n' "$data" | sed -n '1p')"
 login="$(printf '%s\n' "$data" | sed -n '2p')"
 
+# Clear the clipboard after 45 s, but only if it still holds this password.
 printf '%s' "$password" | wl-copy
+(
+    sleep 45
+    [[ "$(wl-paste --no-newline 2>/dev/null)" == "$password" ]] && wl-copy --clear
+) >/dev/null 2>&1 &
+disown
 
 notify-send \
     "Password copied" \
