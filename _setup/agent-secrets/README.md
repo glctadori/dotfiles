@@ -3,7 +3,7 @@
 Il broker tiene la chiave OpenRouter fuori dai processi dell'utente: `semantic-search`
 e `semantic-index` chiedono gli embeddings tramite `agent-embeddings` invece di leggere
 `pass`. Codex, Pi e Claude Code non usano sandbox; Claude Code ha solo i deny su pass e
-gnupg nelle managed settings (vedi `_setup/claude-code/`).
+gnupg in `claude/.claude/settings.json`.
 
 ## Install
 

@@ -11,8 +11,23 @@ Pin: release *
 Pin-Priority: -10
 PREF
 
+# Residui server: un solo gestore di rete (NetworkManager), niente cloud-init
 sudo touch /etc/cloud/cloud-init.disabled
-sudo systemctl mask systemd-networkd-wait-online.service
+sudo systemctl disable --now systemd-networkd.socket systemd-networkd-varlink.socket \
+    systemd-networkd-resolve-hook.socket systemd-networkd.service \
+    systemd-networkd-wait-online.service networkd-dispatcher.service 2>/dev/null || true
+sudo systemctl mask systemd-networkd.service systemd-networkd.socket \
+    systemd-networkd-wait-online.service
+mkdir -p "$HOME/netplan-backup"
+sudo mv /etc/netplan/00-installer-config.yaml* "$HOME/netplan-backup/" 2>/dev/null || true
+sudo apt purge -y \
+    cloud-init cloud-init-base cloud-initramfs-dyn-netconf landscape-common \
+    open-iscsi multipath-tools lxd-installer lxd-agent-loader \
+    networkd-dispatcher motd-news-config ubuntu-server 2>/dev/null || true
+sudo apt-mark manual fwupd fwupd-signed tmux htop 2>/dev/null || true
+sudo apt autoremove --purge -y
+sudo systemctl disable --now ModemManager avahi-daemon apport kdump-tools \
+    unattended-upgrades 2>/dev/null || true
 
 # Mozilla repository
 sudo install -d -m 0755 /etc/apt/keyrings
@@ -52,7 +67,7 @@ sudo apt install -y \
     zathura zathura-pdf-poppler hyprlock hypridle apparmor-utils \
     libcanberra-gtk3-module sound-theme-freedesktop rfkill starship socat flatpak \
     newsboat pulsemixer tlp thermald btm ripgrep fd-find isync msmtp neomutt \
-    yazi cups smartmontools nvme-cli fwupd libreoffice pipx python3-venv \
+    yazi cups smartmontools nvme-cli fwupd tmux htop libreoffice pipx python3-venv \
     plymouth-themes firefox jq xdg-user-dirs desktop-file-utils \
     texlive-luatex texlive-latex-extra texlive-lang-italian latexmk pandoc
 flatpak remote-add --if-not-exists flathub \

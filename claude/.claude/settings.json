@@ -4,10 +4,13 @@
   },
   "permissions": {
     "defaultMode": "auto",
-    "deny": [
-      "Read(~/.password-store/**)",
-      "Read(//home/gian/.password-store/**)"
-    ]
+     "deny": [
+       "Read(~/.password-store/**)",
+       "Read(//home/gian/.password-store/**)",
+       "Read(~/.gnupg/**)",
+       "Edit(~/.password-store/**)",
+       "Edit(~/.gnupg/**)"
+     ]
   },
   "model": "sonnet",
   "hooks": {
@@ -86,7 +89,7 @@
   },
   "enabledPlugins": {
     "tex-display@claude-code-latex": true,
-    "text-to-cad@earthtojake": true
+    "text-to-cad@earthtojake": false
   },
   "extraKnownMarketplaces": {
     "claude-code-latex": {

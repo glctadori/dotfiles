@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-# Installa le managed settings di Claude Code (root-owned: l'agente non puo' allentarle).
-set -euo pipefail
-
-src="$(cd "$(dirname "$0")" && pwd)/claude-code/managed-settings.json"
-sudo install -d -m 755 -o root -g root /etc/claude-code
-sudo install -m 644 -o root -g root "$src" /etc/claude-code/managed-settings.json
-
-echo "Installato /etc/claude-code/managed-settings.json. Riavvia le sessioni di Claude Code."
