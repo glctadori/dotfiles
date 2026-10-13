@@ -75,6 +75,14 @@ local function read_state()
   if ok and type(data) == "table" and data.state then on_state(data) end
 end
 
+-- Un'interruzione non fa scattare nessun hook (né Stop né PostToolUse): senza
+-- questo lo stato resterebbe "thinking" finché non parte un altro turno.
+local function interrupted()
+  if current.state == "thinking" or current.state == "tool" then
+    on_state({ state = "idle", detail = "", ts = os.time() })
+  end
+end
+
 function M.watch()
   if watcher then return end
   vim.fn.mkdir(state_dir, "p")
@@ -82,6 +90,9 @@ function M.watch()
   watcher:start(state_dir, {}, vim.schedule_wrap(function(err, name)
     if not err and name == vim.fn.fnamemodify(state_file, ":t") then read_state() end
   end))
+  vim.on_key(function(key)
+    if key == "\3" and vim.fn.mode() == "t" and in_claude_window() then vim.schedule(interrupted) end
+  end, vim.api.nvim_create_namespace("ClaudeInterrupt"))
   vim.api.nvim_create_autocmd("VimLeavePre", {
     group = vim.api.nvim_create_augroup("ClaudeState", { clear = true }),
     callback = function()
@@ -239,7 +250,8 @@ function M.buffers() picker(true) end
 function M.interrupt()
   if not ready() then return end
   local ok, count = pcall(vim.fn.chansend, channel(), "\27")
-  if not ok or count == 0 then warn("Terminale Claude non disponibile") end
+  if not ok or count == 0 then warn("Terminale Claude non disponibile") return end
+  interrupted()
 end
 
 function M.clear() send("/clear") end
