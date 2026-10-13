@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Notifica se Super+C / Super+X hanno cambiato la clipboard.
+# Fa lo snapshot, invia la scorciatoia (copy: Ctrl+Insert, cut: Ctrl+X) e confronta la clipboard dopo.
+
+action="${1:-copy}"
+exec 2>>/tmp/clipboard-notify.log
+set -x
+
+snapshot() {
+    local type
+    type="$(timeout 1 wl-paste -l 2>/dev/null | head -n1)"
+    [[ -n $type ]] || return 0
+    printf '%s\n' "$type"
+    timeout 1 wl-paste -n -t "$type" 2>/dev/null | md5sum
+}
+
+before="$(snapshot)"
+if [[ $action == cut ]]; then
+    hyprctl dispatch sendshortcut "CTRL,X,activewindow" >/dev/null
+else
+    hyprctl dispatch sendshortcut "CTRL,Insert,activewindow" >/dev/null
+fi
+for _ in 1 2 3 4 5 6; do
+    sleep 0.1
+    after="$(snapshot)"
+    [[ $before != "$after" ]] && break
+done
+
+label="Copiato"
+[[ $action == cut ]] && label="Tagliato"
+
+if [[ -z $after ]]; then
+    notify-send -u normal -t 1500 "Clipboard" "Clipboard vuota: niente da $action"
+elif [[ $before == "$after" ]]; then
+    notify-send -u normal -t 1500 "Clipboard" "Non cambiata (nulla selezionato o stesso contenuto)"
+else
+    type="${after%%$'\n'*}"
+    if [[ $type == text/* || $type == UTF8_STRING || $type == STRING ]]; then
+        preview="$(timeout 1 wl-paste -n -t "$type" 2>/dev/null | tr '\n' ' ' | cut -c1-80)"
+        notify-send -t 1500 "$label" "$preview"
+    else
+        notify-send -t 1500 "$label" "$type"
+    fi
+fi
