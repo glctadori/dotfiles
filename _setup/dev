@@ -13,6 +13,11 @@ if ! command -v claude >/dev/null 2>&1; then
     curl -fsSL https://claude.ai/install.sh | bash
 fi
 
-if ! command -v pio >/dev/null 2>&1; then
+if ! claude plugin list 2>/dev/null | grep -q 'text-to-cad@earthtojake'; then
+    claude plugin marketplace add earthtojake/text-to-cad#latest
+    claude plugin install text-to-cad@earthtojake
+fi
+
+if ! command -v pio>/dev/null 2>&1; then
     pipx install platformio
 fi

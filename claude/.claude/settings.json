@@ -1,0 +1,117 @@
+{
+  "env": {
+    "COLORFGBG": "15;0"
+  },
+  "permissions": {
+    "defaultMode": "auto",
+    "deny": [
+      "Read(~/.password-store/**)",
+      "Read(//home/gian/.password-store/**)"
+    ]
+  },
+  "model": "sonnet",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/gian/.local/bin/claude-nvim-state"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/gian/.local/bin/claude-nvim-state"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/gian/.local/bin/claude-nvim-state"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/gian/.local/bin/claude-nvim-state"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/gian/.local/bin/claude-nvim-state"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/gian/.local/bin/claude-nvim-state"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/gian/.local/bin/claude-nvim-state"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "tex-display@claude-code-latex": true,
+    "text-to-cad@earthtojake": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-latex": {
+      "source": {
+        "source": "github",
+        "repo": "samox73/claude-code-latex"
+      }
+    },
+    "earthtojake": {
+      "source": {
+        "source": "github",
+        "repo": "earthtojake/text-to-cad",
+        "ref": "latest"
+      }
+    }
+  },
+  "modelSettings": {
+    "claude-sonnet-5-5": {
+      "effortLevel": "medium"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "medium"
+    }
+  },
+  "promptSuggestionEnabled": false,
+  "tui": "default",
+  "theme": "auto"
+}
