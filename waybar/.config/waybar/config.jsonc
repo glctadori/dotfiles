@@ -13,8 +13,8 @@
     ],
 
     "modules-right": [
-        "custom/codex",
-        "custom/openrouter",
+        "custom/claude",
+        // nascosti, non eliminati: "custom/codex", "custom/openrouter",
         "network",
         "pulseaudio",
         "battery",
@@ -29,6 +29,13 @@
     "hyprland/window": {
         "format": "{}",
         "max-length": 70
+    },
+
+    "custom/claude": {
+        "exec": "~/.local/bin/waybar-claude",
+        "return-type": "json",
+        "interval": 120,
+        "tooltip": true
     },
 
     "custom/codex": {
