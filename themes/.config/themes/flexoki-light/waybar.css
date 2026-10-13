@@ -1,0 +1,48 @@
+window#waybar {
+    color: #100f0f;
+}
+
+#workspaces,
+#mpd,
+#window,
+.modules-right {
+    background: rgba(255, 252, 240, 0.94);
+}
+
+#workspaces button {
+    color: #878580;
+}
+
+#workspaces button.active {
+    background: transparent;
+    color: #205ea6;
+    font-weight: bold;
+}
+
+#workspaces button.urgent {
+    background: transparent;
+    color: #d14d41;
+}
+
+#window {
+    color: #403e3c;
+}
+
+#network,
+#custom-pomodoro,
+#custom-agent-usage,
+#custom-project,
+#custom-project-agents,
+#pulseaudio,
+#battery,
+#clock {
+    color: #100f0f;
+}
+
+#battery.warning {
+    color: #d0a215;
+}
+
+#battery.critical {
+    color: #d14d41;
+}

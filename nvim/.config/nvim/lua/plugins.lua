@@ -69,6 +69,31 @@ return {
     name = "catppuccin",
     priority = 1000,
   },
+  {
+    "ficcdaf/ashen.nvim",
+    priority = 1000,
+  },
+  {
+    "loctvl842/monokai-pro.nvim",
+    priority = 1000,
+  },
+  {
+    "rose-pine/neovim",
+    name = "rose-pine",
+    priority = 1000,
+  },
+  {
+    "ribru17/bamboo.nvim",
+    priority = 1000,
+  },
+  {
+    "EdenEast/nightfox.nvim",
+    priority = 1000,
+  },
+  {
+    "kepano/flexoki-neovim",
+    priority = 1000,
+  },
   -- { "nvim-mini/mini.icons", opts = {} },
   {
     "echasnovski/mini.nvim",
