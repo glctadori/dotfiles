@@ -2,8 +2,6 @@ require("options")
 require("bootstrap")
 require("terminal")
 require("sudo")
-require("chat")
-require("palette")
 require("keymaps")
 require("markdown_pdf").setup()
 
