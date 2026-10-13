@@ -10,7 +10,7 @@ export XDG_DATA_DIRS="$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/
 # export AGENT="${AGENT:-codex}"
 
 # Avvia Hyprland automaticamente al login su tty1 senza mostrare la console.
-if [[ -z $DISPLAY && $XDG_VTNR -eq 1 ]]; then
+if [[ -o interactive && -t 0 && -z $DISPLAY && -z $WAYLAND_DISPLAY && $XDG_VTNR -eq 1 ]]; then
     printf '\e[2J\e[H\e[?25l'
     exec start-hyprland > /dev/null 2>&1
 fi
