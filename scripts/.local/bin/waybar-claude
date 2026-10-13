@@ -45,6 +45,7 @@ def render(data):
 if __name__ == '__main__':
     try:
         output = render(fetch())
-    except Exception as error:
-        output = {'text': f'{ICON} —', 'tooltip': f'Claude · {error}', 'class': 'unavailable'}
+    except Exception:
+        # Testo vuoto: Waybar nasconde il modulo quando la quota non è disponibile.
+        output = {'text': '', 'tooltip': '', 'class': 'unavailable'}
     print(json.dumps(output, ensure_ascii=False))

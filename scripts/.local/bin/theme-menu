@@ -3,7 +3,7 @@
 
 themes_dir="$(realpath "$HOME/.config/themes")"
 
-selected=$(find -L "$themes_dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' \
+selected=$(find -L "$themes_dir" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' \
     | grep -vx current \
     | sort | fuzzel --dmenu --prompt "Theme: ")
 

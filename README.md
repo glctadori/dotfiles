@@ -51,6 +51,15 @@ Optional setup is deliberately separate:
 ./_setup/ros
 ```
 
+## Claude Code
+
+The `claude` package stows only configuration into `~/.claude`: `settings.json`
+and `skills/`. `~/.claude` itself must be a real directory, because Claude Code
+keeps credentials, sessions and plugin caches there; `.gitignore` excludes
+everything in `claude/.claude/` except the tracked files. Plugins are declared
+in `settings.json` and installed by `_setup/dev`. System-wide managed settings
+live in `_setup/claude-code/` (`_setup/setup-claude-code`).
+
 ## Markdown PDF and printing
 
 In Neovim, Markdown and Vimwiki buffers provide:
@@ -132,8 +141,8 @@ and key rotation; semantic search and indexing need no confirmations.
 See [_setup/agent-secrets/README.md](_setup/agent-secrets/README.md) for details and
 maintenance commands.
 
-Claude Code usa la propria sandbox: `./_setup/setup-claude-code` installa le managed settings
-(`/etc/claude-code/managed-settings.json`, root-owned) con le regole su pass e gnupg.
+Claude Code gira senza sandbox: `./_setup/setup-claude-code` installa le managed settings
+(`/etc/claude-code/managed-settings.json`, root-owned) con i deny su pass e gnupg.
 
 ## Convention
 

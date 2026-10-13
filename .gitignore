@@ -3,4 +3,9 @@ __pycache__/
 _benchmarks/
 _checks/
 semantic-benchmark-*.txt
-agent-skills/.claude/skills/synced/
+
+# Claude Code: si versiona solo la config; lo stato (credenziali, sessioni, plugin) resta fuori
+claude/.claude/*
+!claude/.claude/settings.json
+!claude/.claude/skills/
+claude/.claude/skills/synced/
