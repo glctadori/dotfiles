@@ -29,7 +29,6 @@ def load(name, path):
 
 
 broker = load("broker", ROOT / "_setup/agent-secrets/service.py")
-launcher = load("launcher", ROOT / "_setup/agent-secrets/launch.py")
 index = load("semantic_index", ROOT / "scripts/.local/bin/semantic-index")
 search = load("semantic_search", ROOT / "scripts/.local/bin/semantic-search")
 client = load("embedding_client", ROOT / "scripts/.local/bin/agent-embeddings")
@@ -127,107 +126,6 @@ class BrokerTests(unittest.TestCase):
             with patch.object(client, "SOCKET", temporary + "/missing"), patch("sys.stdin", stdin):
                 with self.assertRaisesRegex(SystemExit, "service is not installed"):
                     client.main()
-
-
-class LauncherTests(unittest.TestCase):
-    def test_real_namespace_isolates_secrets_and_keeps_files_network_and_broker(self):
-        with tempfile.TemporaryDirectory(dir=ROOT / "_setup/agent-secrets") as temporary:
-            home = Path(temporary)
-            store = home / "actual-store"
-            store.mkdir()
-            (store / "fake-secret.gpg").write_text(KEY)
-            (home / ".password-store").symlink_to(store)
-            (home / "alias-store").symlink_to(store)
-            (home / ".gnupg").mkdir()
-            (home / ".gnupg/private-marker").write_text(KEY)
-            (home / "ordinary-file").write_text("file access works")
-            broker_directory = home / "broker"
-            broker_directory.mkdir()
-            config = {"uid": os.getuid(), "home": str(home), "secret_paths": [str(store)]}
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as unix_listener, \
-                 socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_listener:
-                unix_listener.bind(str(broker_directory / "socket"))
-                unix_listener.listen()
-                unix_listener.settimeout(10)
-                tcp_listener.bind(("127.0.0.1", 0))
-                tcp_listener.listen()
-                tcp_listener.settimeout(10)
-
-                def serve(listener, reply):
-                    try:
-                        connection, _ = listener.accept()
-                        with connection:
-                            connection.sendall(reply)
-                    except OSError:
-                        pass
-
-                workers = [threading.Thread(target=serve, args=(unix_listener, b"broker-ok")),
-                           threading.Thread(target=serve, args=(tcp_listener, b"network-ok"))]
-                for worker in workers:
-                    worker.start()
-                with patch.object(Path, "is_socket", return_value=True):
-                    command = launcher.build_command(config, "check", [], {"OPENROUTER_API_KEY": KEY})
-                # The real test broker is harmless, temporary, and mapped to the production socket path.
-                bind_index = command.index("/run/agent-embeddings")
-                command[bind_index] = str(broker_directory)
-                end = command.index("--")
-                program = '''
-import os, socket
-from pathlib import Path
-import sys
-home = Path(sys.argv[1])
-for name in ("actual-store", ".password-store", "alias-store", ".gnupg"):
-    directory = home / name
-    assert list(directory.iterdir()) == [], "secret directory visible"
-    assert not os.access(directory, os.W_OK), "secret directory writable"
-assert (home / "ordinary-file").read_text() == "file access works"
-(home / "output-file").write_text("write access works")
-assert not Path("/proc/" + sys.argv[2]).exists(), "host process visible"
-assert not Path("/run/dbus/system_bus_socket").exists()
-assert not Path("/run/user/" + str(os.getuid()) + "/bus").exists()
-assert "OPENROUTER_API_KEY" not in os.environ
-with socket.socket(socket.AF_UNIX) as connection:
-    connection.connect("/run/agent-embeddings/socket")
-    assert connection.recv(32) == b"broker-ok"
-with socket.create_connection(("127.0.0.1", int(sys.argv[3])), timeout=5) as connection:
-    assert connection.recv(32) == b"network-ok"
-print("isolation integration OK")
-'''
-                command = command[:end+1] + ["/usr/bin/python3", "-I", "-c", program,
-                                             str(home), str(os.getpid()), str(tcp_listener.getsockname()[1])]
-                try:
-                    result = subprocess.run(command, capture_output=True, text=True, timeout=10)
-                finally:
-                    for worker in workers:
-                        worker.join(11)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual((home / "output-file").read_text(), "write access works")
-                self.assertEqual((store / "fake-secret.gpg").read_text(), KEY)
-
-    def test_masks_resolved_paths_and_retains_network(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            home = Path(temporary)
-            store = home / "actual-store"
-            store.mkdir()
-            (home / ".password-store").symlink_to(store)
-            (home / ".gnupg").mkdir()
-            config = {"uid": os.getuid(), "home": str(home), "secret_paths": [str(store)]}
-            with patch.object(Path, "is_socket", return_value=True):
-                command = launcher.build_command(config, "check", [],
-                                                 {"OPENROUTER_API_KEY": KEY, "SSH_AUTH_SOCK": "/host/socket"})
-            self.assertIn("--unshare-pid", command)
-            self.assertIn("--new-session", command)
-            self.assertNotIn("--unshare-net", command)
-            self.assertNotIn(KEY, command)
-            self.assertIn("OPENROUTER_API_KEY", command)
-            self.assertIn("SSH_AUTH_SOCK", command)
-            self.assertIn(["--tmpfs", str(store), "--remount-ro", str(store)],
-                          [command[i:i+4] for i in range(len(command))])
-
-    def test_dangerous_secret_root_is_rejected(self):
-        config = {"uid": os.getuid(), "home": "/home/fake", "secret_paths": ["/"]}
-        with self.assertRaisesRegex(ValueError, "essential directory"):
-            launcher.build_command(config, "check", [], {})
 
 
 class SemanticCompatibilityTests(unittest.TestCase):

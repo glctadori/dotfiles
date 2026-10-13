@@ -73,8 +73,4 @@ Plan mode therefore added about 21 ms in this check, without startup network
 requests or additional runtime dependencies. Automatic network activity remains
 enabled; `--offline` is not set globally.
 
-These measure the managed Pi executable directly. The usual outer launcher
-uses Bubblewrap, which cannot create namespaces inside the testing environment;
-the reported three-second launch in the user's actual Kitty session could not
-be reproduced here. No launcher protection was removed or bypassed in its
-configuration. Use `PI_TIMING=1 pi` for Pi's internal startup timings locally.
+Use `PI_TIMING=1 pi` for Pi's internal startup timings locally.

@@ -124,13 +124,13 @@ The command belongs to the existing `scripts` Stow package; on another machine,
 run `stow -R scripts` from the dotfiles root to expose it in `~/.local/bin`.
 
 
-## Codex and Pi secret isolation
+## Embeddings broker
 
 Run `./_setup/setup-agent-secrets` from a normal terminal to install the protected
-embeddings broker and sandbox launchers. Sudo is needed only for setup, updates,
+embeddings broker. Sudo is needed only for setup, updates,
 and key rotation; semantic search and indexing need no confirmations.
-See [_setup/agent-secrets/README.md](_setup/agent-secrets/README.md) for the boundary,
-verification, and maintenance commands.
+See [_setup/agent-secrets/README.md](_setup/agent-secrets/README.md) for details and
+maintenance commands.
 
 Claude Code usa la propria sandbox: `./_setup/setup-claude-code` installa le managed settings
 (`/etc/claude-code/managed-settings.json`, root-owned) con le regole su pass e gnupg.

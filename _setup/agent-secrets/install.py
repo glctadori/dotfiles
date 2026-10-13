@@ -20,13 +20,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--uid", type=int, required=True)
     parser.add_argument("--gid", type=int, required=True)
-    parser.add_argument("--home", required=True)
-    parser.add_argument("--store", required=True)
-    parser.add_argument("--gnupg", required=True)
     parser.add_argument("--credential", action="store_true")
     args = parser.parse_args()
     if os.geteuid() != 0 or args.uid == 0:
-        raise SystemExit("installer requires sudo and a non-root agent user")
+        raise SystemExit("installer requires sudo and a non-root user")
     source = Path(__file__).resolve().parent
     library = Path("/usr/local/lib/agent-secrets")
     config_dir = Path("/etc/agent-secrets")
@@ -34,8 +31,7 @@ def main():
         directory.mkdir(mode=0o755, parents=True, exist_ok=True)
         os.chown(directory, 0, 0)
         directory.chmod(0o755)
-    for name in ("service.py", "launch.py", "check.py"):
-        write_owned(library / name, (source / name).read_text(), 0o644)
+    write_owned(library / "service.py", (source / "service.py").read_text(), 0o644)
     if args.credential:
         key = sys.stdin.buffer.read(16385).strip()
         if not key or len(key) > 16384 or b"\n" in key or b"\r" in key:
@@ -51,10 +47,7 @@ def main():
                 os.unlink(temporary)
     if not (config_dir / "openrouter").is_file():
         raise SystemExit("no service credential; rerun setup with --rotate-key")
-    home = Path(args.home).resolve()
-    config = {"uid": args.uid, "gid": args.gid, "home": str(home),
-              "secret_paths": sorted({str(Path(p).resolve()) for p in
-                                      (args.store, args.gnupg, home / ".password-store", home / ".gnupg")})}
+    config = {"uid": args.uid, "gid": args.gid}
     write_owned(config_dir / "config.json", json.dumps(config, indent=2) + "\n", 0o644)
     write_owned(Path("/etc/systemd/system/agent-embeddings.socket"), f"""[Unit]
 Description=Agent embeddings credential broker socket
