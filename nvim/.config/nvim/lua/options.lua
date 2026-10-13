@@ -38,6 +38,13 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.opt_local.conceallevel = 2
   end,
 })
+-- Don't auto-continue comments on new lines (ftplugins reset this, so use FileType).
+vim.api.nvim_create_autocmd("FileType", {
+  group = group,
+  callback = function()
+    vim.opt_local.formatoptions:remove({ "c", "r", "o" })
+  end,
+})
 vim.api.nvim_create_autocmd("TextYankPost", {
   group = group,
   callback = function()

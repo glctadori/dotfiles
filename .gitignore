@@ -1,0 +1,6 @@
+.nvimlog
+__pycache__/
+_benchmarks/
+_checks/
+semantic-benchmark-*.txt
+agent-skills/.claude/skills/synced/

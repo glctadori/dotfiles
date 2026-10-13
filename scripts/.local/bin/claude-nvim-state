@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Hook di Claude Code: scrive lo stato della sessione nel file osservato da Neovim.
+
+Attivo solo se Neovim ha avviato Claude (CLAUDE_NVIM_STATE impostata); altrimenti no-op.
+"""
+import json
+import os
+import sys
+import time
+
+
+def classify(event):
+    name = event.get("hook_event_name")
+    if name == "UserPromptSubmit" or name == "PostToolUse":
+        return "thinking", ""
+    if name == "PreToolUse":
+        return "tool", event.get("tool_name", "")
+    if name == "Notification":
+        if event.get("notification_type") == "idle_prompt":
+            return "done", ""
+        return "waiting", event.get("message", "")
+    if name in ("Stop", "SubagentStop"):
+        return ("done", "") if name == "Stop" else (None, "")
+    if name == "SessionStart":
+        return "idle", ""
+    if name == "SessionEnd":
+        return "off", ""
+    return None, ""
+
+
+def main():
+    path = os.environ.get("CLAUDE_NVIM_STATE")
+    if not path:
+        return
+    try:
+        event = json.load(sys.stdin)
+    except ValueError:
+        return
+    state, detail = classify(event)
+    if state is None:
+        return
+    payload = {"state": state, "detail": detail, "ts": time.time()}
+    tmp = f"{path}.{os.getpid()}.tmp"
+    try:
+        with open(tmp, "w") as f:
+            json.dump(payload, f)
+        os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+if __name__ == "__main__":
+    main()

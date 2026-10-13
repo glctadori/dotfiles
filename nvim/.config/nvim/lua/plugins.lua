@@ -1,8 +1,4 @@
 -- Explicit plugin selection: navigation, language support, Markdown and Git hunks.
-local function root()
-  return vim.fs.root(0, { ".git", "pixi.toml", "pyproject.toml", "platformio.ini" }) or vim.fn.getcwd()
-end
-
 local parsers = {
   "bash",
   "c",
@@ -30,7 +26,7 @@ return {
       spec = {
         {
           mode = { "n", "x" },
-          { "<leader>a", group = "AI" },
+          { "<leader>a", group = "Claude Code" },
           { "<leader>b", group = "Buffers" },
           { "<leader>c", group = "Code" },
           { "<leader>e", group = "Explorer" },
@@ -125,7 +121,7 @@ return {
 
               {
                 hl = "MiniStatuslineDevinfo",
-                strings = { package.loaded.chat and package.loaded.chat.statusline() or "" },
+                strings = { require("claude").status() },
               },
 
               {
@@ -273,23 +269,51 @@ return {
     cmd = "Neogit",
     opts = {},
   },
-  -- AI: pi agent (OpenRouter, DeepSeek V4.1 Flash, thinking off).
-  -- tools = {} keeps read/edit/write (always enabled) and disables bash.
-  -- {
-  --   "pablopunk/pi.nvim",
-  --   opts = {
-  --     provider = "openrouter",
-  --     model = "deepseek/deepseek-v4.1-flash",
-  --     thinking = "off",
-  --     system_prompt = "You are a helpful assistant.",
-  --     append_system_prompt = "Always respond concisely.",
-  --     tools = {},
-  --     skills = false,
-  --     extensions = false,
-  --   },
-  -- },
   {
-    "alex35mil/pi.nvim",
-    config = true,
+    "coder/claudecode.nvim",
+    lazy = true,
+    config = function(_, opts)
+      require("claude").setup_highlights()
+      require("claudecode").setup(opts)
+      require("claude").watch()
+    end,
+    dependencies = { "folke/snacks.nvim" },
+    cmd = {
+      "ClaudeCode", "ClaudeCodeFocus", "ClaudeCodeSelectModel", "ClaudeCodeAdd",
+      "ClaudeCodeSend", "ClaudeCodeSendText", "ClaudeCodeTreeAdd", "ClaudeCodeStatus",
+      "ClaudeCodeStart", "ClaudeCodeStop", "ClaudeCodeOpen", "ClaudeCodeClose",
+      "ClaudeCodeDiffAccept", "ClaudeCodeDiffDeny", "ClaudeCodeCloseAllDiffs",
+    },
+    keys = {
+      { "<leader>ac", function() require("claude").toggle() end, desc = "Claude: toggle chat" },
+      { "<leader>az", function() require("claude").zoom() end, desc = "Claude: fullscreen toggle" },
+      { "<A-z>", function() require("claude").zoom() end, mode = "t", desc = "Claude: fullscreen toggle" },
+      { "<leader>as", function() require("claude").message() end, desc = "Claude: send message" },
+      { "<leader>as", function() require("claude").selection() end, mode = "x", desc = "Claude: send selection only" },
+      { "<leader>af", function() require("claude").files() end, desc = "Claude: files (project)" },
+      { "<leader>ab", function() require("claude").buffers() end, desc = "Claude: buffers" },
+      { "<leader>ak", function() require("claude").interrupt() end, desc = "Claude: interrupt" },
+      { "<leader>ax", function() require("claude").clear() end, desc = "Claude: clear conversation" },
+      { "<leader>am", function() require("claude").model() end, desc = "Claude: model" },
+      { "<leader>aa", "<cmd>ClaudeCodeDiffAccept<cr>", desc = "Claude: accept diff" },
+      { "<leader>ad", "<cmd>ClaudeCodeDiffDeny<cr>", desc = "Claude: reject diff" },
+    },
+    opts = {
+      terminal_cmd = vim.fn.expand("~/.local/bin/claude"),
+      env = { CLAUDE_NVIM_STATE = require("claude").state_path() },
+      focus_after_send = false,
+      terminal = {
+        provider = "snacks",
+        split_side = "right",
+        split_width_percentage = 0.35,
+        cwd_provider = function() return require("project").root(0) end,
+        snacks_win_opts = {
+          wo = { winhighlight = "Normal:ClaudeTerminal,NormalNC:ClaudeTerminal" },
+          -- <Esc> usa la mappatura globale (terminal normal mode); per interrompere Claude: <leader>ak
+          keys = { term_normal = false },
+        },
+      },
+      diff_opts = { layout = "unified" },
+    },
   },
 }

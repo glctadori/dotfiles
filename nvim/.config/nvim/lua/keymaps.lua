@@ -1,7 +1,7 @@
 local M = {}
 
 local function root()
-  return require("chat").project_root(0)
+  return require("project").root(0)
 end
 
 vim.keymap.set("n", "S", ":%s//g<Left><Left>", {
@@ -38,18 +38,31 @@ vim.keymap.set("n", "<leader>qq", "<cmd>quit<cr>", { desc = "Quit window" })
 map("n", "<leader>wd", "<cmd>bdelete<cr>", "Delete buffer")
 
 -- Maximize / restore window
-local maximized = false
-
-map("n", "<leader>wm", function()
-  if maximized then
-    vim.cmd("wincmd =")
-    maximized = false
-  else
-    vim.cmd("wincmd _")
-    vim.cmd("wincmd |")
-    maximized = true
+-- Stato per tab: il layout salvato va ripristinato con winrestcmd(), perché
+-- `wincmd =` ignora le finestre con 'winfixwidth' (come il terminale di Claude).
+local function toggle_maximize()
+  local saved = vim.t.maximize_restore
+  if saved then
+    vim.t.maximize_restore = nil
+    vim.cmd(saved)
+    return
   end
-end, "Maximize window")
+  vim.t.maximize_restore = vim.fn.winrestcmd()
+  local win = vim.api.nvim_get_current_win()
+  vim.wo[win].winfixwidth = false
+  vim.wo[win].winfixheight = false
+  vim.cmd("wincmd _")
+  vim.cmd("wincmd |")
+end
+
+M.toggle_maximize = toggle_maximize
+
+map("n", "<leader>wm", toggle_maximize, "Maximize window (toggle)")
+map("t", "<A-m>", function()
+  vim.cmd.stopinsert()
+  toggle_maximize()
+  vim.cmd.startinsert()
+end, "Maximize window (toggle)")
 
 local resize_active = false
 
