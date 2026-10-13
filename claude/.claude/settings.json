@@ -3,16 +3,16 @@
     "COLORFGBG": "15;0"
   },
   "permissions": {
-    "defaultMode": "auto",
-     "deny": [
-       "Read(~/.password-store/**)",
-       "Read(//home/gian/.password-store/**)",
-       "Read(~/.gnupg/**)",
-       "Edit(~/.password-store/**)",
-       "Edit(~/.gnupg/**)"
-     ]
+    "deny": [
+      "Read(~/.password-store/**)",
+      "Read(//home/gian/.password-store/**)",
+      "Read(~/.gnupg/**)",
+      "Edit(~/.password-store/**)",
+      "Edit(~/.gnupg/**)"
+    ],
+    "defaultMode": "auto"
   },
-  "model": "sonnet",
+  "model": "opus",
   "hooks": {
     "SessionStart": [
       {
@@ -88,7 +88,7 @@
     ]
   },
   "enabledPlugins": {
-    "tex-display@claude-code-latex": true,
+    "tex-display@claude-code-latex": false,
     "text-to-cad@earthtojake": false
   },
   "extraKnownMarketplaces": {

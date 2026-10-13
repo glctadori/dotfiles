@@ -1,4 +1,11 @@
 #!/bin/sh
 # Ultima build gestita dall'updater di Claude Code; la sandbox e' nelle settings (_setup/claude-code).
 dir="$HOME/.local/share/claude/versions"
-exec "$dir/$(ls "$dir" | sort -V | tail -n1)" "$@"
+bin="$dir/$(ls "$dir" | sort -V | tail -n1)"
+
+# text-to-cad avvia un server MCP lento: attivo solo sotto ~/projects/cad (sottocartelle incluse).
+case "$PWD/" in
+  "$HOME"/projects/cad/*)
+    exec "$bin" --settings '{"enabledPlugins":{"text-to-cad@earthtojake":true}}' "$@" ;;
+esac
+exec "$bin" "$@"
