@@ -2,6 +2,8 @@
 set -euo pipefail
 
 notify() {
+    # Le chiamate automatiche (hotplug) restano silenziose finché va tutto bene.
+    [[ -n "${DISPLAY_MONITOR_QUIET:-}" && "${2:-normal}" != critical ]] && return 0
     notify-send -a display-monitor -h string:x-canonical-private-synchronous:display-monitor \
         -u "${2:-normal}" -t 4000 "Schermi · Mod+F2" "$1" >/dev/null 2>&1 || true
 }
@@ -12,6 +14,11 @@ notify "Comando ricevuto: controllo i monitor…"
 # Una pressione ripetuta non deve sovrapporre le riconfigurazioni.
 exec 9>"${XDG_RUNTIME_DIR:-/tmp}/display-monitor-${UID}.lock"
 flock -w 10 9 || { notify "Configurazione schermi già in corso."; exit 0; }
+
+# Regole lette da hyprland.conf: sopravvivono a `hyprctl reload` (cambio tema).
+# .zprofile lo svuota a ogni login, così il pannello parte sempre acceso.
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr/monitors.conf"
+mkdir -p "$(dirname "$STATE")"
 
 # Include i pannelli disabilitati, per poterli ripristinare.
 MONITORS="$(hyprctl monitors all -j)"
@@ -24,42 +31,47 @@ if [[ -z "$INTERNAL" ]]; then
     exit 1
 fi
 
-ACTIVE_WORKSPACE="$(hyprctl activeworkspace -j | jq -r '.id')"
-move_workspaces() {
-    local target="$1" workspace
-    while IFS= read -r workspace; do
-        hyprctl dispatch moveworkspacetomonitor "$workspace $target"
-    done < <(hyprctl workspaces -j | jq -r --arg target "$target" '.[] | select(.monitor != $target) | if .id > 0 then (.id | tostring) else "name:" + .name end')
-    hyprctl dispatch focusmonitor "$target"
-    if [[ "$ACTIVE_WORKSPACE" -gt 0 && "$(hyprctl activeworkspace -j | jq -r '.id')" != "$ACTIVE_WORKSPACE" ]]; then
-        hyprctl dispatch workspace "$ACTIVE_WORKSPACE"
-    fi
-}
-
 if [[ -n "$EXTERNAL" ]]; then
-    # L'esterno è la sorgente: resta attivo anche a pannello laptop spento.
-    hyprctl keyword monitor "$EXTERNAL,preferred,auto,1"
-    hyprctl dispatch dpms on "$EXTERNAL"
-    # Migra anche i workspace nascosti prima di togliere il laptop dal desktop.
-    move_workspaces "$EXTERNAL"
-    hyprctl keyword monitor "$INTERNAL,preferred,auto,1,mirror,$EXTERNAL"
-    # DPMS spegne il pannello senza rimuovere la configurazione mirror.
-    hyprctl dispatch dpms off "$INTERNAL"
-    notify "Monitor esterno $EXTERNAL attivo in mirror. Schermo laptop spento."
+    # Pannello disattivato, non in mirror: i client vedono un solo output a scala 1
+    # e ridisegnano tutto (il mirror lasciava buffer a metà alla scala 1.25).
+    RULES="monitor=$EXTERNAL,preferred,auto,1
+monitor=$INTERNAL,disable"
+    TARGET="$EXTERNAL"
+    MESSAGE="Monitor esterno $EXTERNAL attivo. Schermo laptop spento."
 else
-    # Rimuove il mirror e ripristina la scala abituale del laptop.
-    hyprctl keyword monitor "$INTERNAL,preferred,auto,1.25"
-    hyprctl dispatch dpms on "$INTERNAL"
-    move_workspaces "$INTERNAL"
-    # Hyprland può lasciare l'output senza eventi dopo la rimozione del mirror.
-    if pgrep -x waybar >/dev/null; then
-        sleep 0.3
-        if ! hyprctl layers -j | jq -e --arg output "$INTERNAL" '.[$output].levels[][] | select(.namespace == "waybar")' >/dev/null; then
-            hyprctl keyword monitor "$INTERNAL,disable"
-            sleep 1
-            hyprctl keyword monitor "$INTERNAL,preferred,auto,1.25"
-        fi
-        pkill -SIGUSR2 -x waybar || true
-    fi
-    notify "Nessun monitor esterno collegato. Schermo laptop acceso."
+    RULES="monitor=$INTERNAL,preferred,auto,1.25"
+    TARGET="$INTERNAL"
+    MESSAGE="Nessun monitor esterno collegato. Schermo laptop acceso."
 fi
+
+if [[ -n "${DISPLAY_MONITOR_QUIET:-}" && -f "$STATE" && "$(cat "$STATE")" == "$RULES" ]]; then
+    # Hotplug generato dalla nostra stessa riconfigurazione: niente da fare.
+    exit 0
+fi
+
+ACTIVE_WORKSPACE="$(hyprctl activeworkspace -j | jq -r '.id')"
+
+printf '%s\n' "$RULES" > "$STATE"
+hyprctl reload >/dev/null
+
+# Le regole vengono applicate in modo asincrono: aspetta che l'output esista.
+for _ in $(seq 20); do
+    hyprctl monitors -j | jq -e --arg m "$TARGET" 'any(.[]; .name == $m)' >/dev/null && break
+    sleep 0.1
+done
+
+hyprctl dispatch dpms on "$TARGET" >/dev/null
+while IFS= read -r workspace; do
+    hyprctl dispatch moveworkspacetomonitor "$workspace $TARGET" >/dev/null
+done < <(hyprctl workspaces -j | jq -r --arg target "$TARGET" '.[] | select(.monitor != $target) | if .id > 0 then (.id | tostring) else "name:" + .name end')
+hyprctl dispatch focusmonitor "$TARGET" >/dev/null
+if [[ "$ACTIVE_WORKSPACE" -gt 0 ]]; then
+    hyprctl dispatch workspace "$ACTIVE_WORKSPACE" >/dev/null
+fi
+
+# Sfondo sul nuovo output e ridisegno completo (prima serviva uno screenshot).
+hyprctl hyprpaper wallpaper ",$(readlink -f "$HOME/.config/themes/current/wallpaper.png")" >/dev/null 2>&1 || true
+pkill -SIGUSR2 -x waybar || true
+hyprctl dispatch forcerendererreload >/dev/null
+
+notify "$MESSAGE"

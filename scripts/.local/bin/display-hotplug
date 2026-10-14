@@ -8,7 +8,7 @@ sleep 0.5
 # ── VIDEO ────────────────────────────────────────────────
 
 # Usa la stessa configurazione e lo stesso lock del comando F2.
-"$(dirname "$0")/display-monitor" || exit $?
+DISPLAY_MONITOR_QUIET=1 "$(dirname "$0")/display-monitor" || exit $?
 
 
 # ── AUDIO ────────────────────────────────────────────────
