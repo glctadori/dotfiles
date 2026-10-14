@@ -7,4 +7,6 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+# Senza rete (es. subito dopo il resume) salta il giro invece di fallire.
+ExecCondition=/usr/bin/nm-online -q -t 30
 ExecStart=/usr/bin/newsboat -q -x reload

@@ -4,6 +4,8 @@ Description=Prune Restic repository on Backblaze B2
 
 [Service]
 Type=oneshot
+# Senza rete (es. subito dopo il resume) salta il giro invece di fallire.
+ExecCondition=/usr/bin/nm-online -q -t 30
 ExecStart=%h/.local/bin/backup b2 prune
 # Give interactive applications priority.
 Nice=10

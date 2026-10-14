@@ -4,6 +4,8 @@ Description=Push committed Git repositories under Projects
 
 [Service]
 Type=oneshot
+# Senza rete (es. subito dopo il resume) salta il giro invece di fallire.
+ExecCondition=/usr/bin/nm-online -q -t 30
 ExecStart=%h/.local/bin/projects-auto-push
 # Keep background Git traffic unobtrusive.
 Nice=10

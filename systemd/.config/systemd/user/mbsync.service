@@ -3,4 +3,6 @@ Description=Synchronize email with mbsync
 
 [Service]
 Type=oneshot
+# Senza rete (es. subito dopo il resume) salta il giro invece di fallire.
+ExecCondition=/usr/bin/nm-online -q -t 30
 ExecStart=%h/.local/bin/mail-sync
