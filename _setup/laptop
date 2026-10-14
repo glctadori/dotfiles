@@ -22,8 +22,22 @@ sudo systemd-tmpfiles --create /etc/tmpfiles.d/pm-debug.conf
 
 # Hotspot iPhone via USB: dopo un suspend l'iPhone si ricollega e usbmuxd lo
 # perde, quindi niente Ethernet e richiesta "Autorizza" sul telefono.
-# Riavviarlo quando ricompare l'interfaccia lo fa ripartire con l'abbinamento salvato.
-sudo tee /etc/udev/rules.d/90-iphone-usbmuxd.rules >/dev/null <<'EOF2'
-ACTION=="add", SUBSYSTEM=="net", DRIVERS=="ipheth", RUN+="/usr/bin/systemctl --no-block try-restart usbmuxd.service"
-EOF2
+# Lo riavvia solo dopo il resume, a verifica dell'abbinamento conclusa: un riavvio
+# durante la verifica (vecchia regola udev a ogni collegamento) cancellava l'abbinamento.
+sudo rm -f /etc/udev/rules.d/90-iphone-usbmuxd.rules
 sudo udevadm control --reload-rules
+sudo tee /etc/systemd/system/usbmuxd-resume.service >/dev/null <<'EOF2'
+[Unit]
+Description=Riavvia usbmuxd dopo il resume (hotspot iPhone via USB)
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/sleep 10
+ExecStart=/usr/bin/systemctl try-restart usbmuxd.service
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+EOF2
+sudo systemctl daemon-reload
+sudo systemctl enable usbmuxd-resume.service
