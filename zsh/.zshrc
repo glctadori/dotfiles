@@ -165,8 +165,6 @@ ytp() {
 
 # ── Projects / files ────────────────────────────────────────────
 
-alias cadnew='project-create cadquery'
-
 fe() {
     local root=${1:-.}
     local selected file

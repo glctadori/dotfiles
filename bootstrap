@@ -25,6 +25,10 @@ for dir in */; do
     stow --restow --target="$HOME" "$package"
 done
 
+# Theme selected by `theme`; not versioned, so a fresh clone needs a default.
+[[ -e "$ROOT/themes/.config/themes/current" ]] ||
+    ln -s everforest-dark "$ROOT/themes/.config/themes/current"
+
 # Setup that depends on the dotfiles now being in place.
 run "Desktop"  "$ROOT/_setup/desktop"
 run "Laptop"   "$ROOT/_setup/laptop"

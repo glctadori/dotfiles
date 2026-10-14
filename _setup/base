@@ -26,7 +26,8 @@ sudo apt purge -y \
     networkd-dispatcher motd-news-config ubuntu-server 2>/dev/null || true
 sudo apt-mark manual fwupd fwupd-signed tmux htop 2>/dev/null || true
 sudo apt autoremove --purge -y
-sudo systemctl disable --now ModemManager avahi-daemon apport kdump-tools \
+# kdump resta attivo: cattura i dump se il kernel va in panic (freeze col dock).
+sudo systemctl disable --now ModemManager avahi-daemon apport \
     unattended-upgrades 2>/dev/null || true
 
 # Mozilla repository
@@ -70,6 +71,9 @@ sudo apt install -y \
     yazi cups smartmontools nvme-cli fwupd tmux htop libreoffice pipx python3-venv \
     plymouth-themes firefox jq xdg-user-dirs desktop-file-utils \
     texlive-luatex texlive-latex-extra texlive-lang-italian latexmk pandoc
+sudo apt install -y \
+    grim slurp wl-clipboard brightnessctl playerctl fuzzel waybar gammastep \
+    zoxide scdaemon usbmuxd
 flatpak remote-add --if-not-exists flathub \
     https://flathub.org/repo/flathub.flatpakrepo
 flatpak install -y flathub \

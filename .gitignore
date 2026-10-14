@@ -9,3 +9,6 @@ claude/.claude/*
 !claude/.claude/settings.json
 !claude/.claude/skills/
 claude/.claude/skills/synced/
+
+# Tema attivo: symlink locale scritto da `theme`, creato da bootstrap se manca
+themes/.config/themes/current

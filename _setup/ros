@@ -19,10 +19,13 @@ sudo apt install -y \
   ros-lyrical-ros-base \
   ros-dev-tools
 
+# ros-dev-tools porta lttng: il demone di tracing non serve all'avvio.
+sudo systemctl disable --now lttng-sessiond 2>/dev/null || true
+
 # rosdep
 sudo rosdep init 2>/dev/null || true
 rosdep update
 
 echo
 echo "ROS 2 Lyrical installato."
-echo 'Aggiungi a ~/.zshrc: source /opt/ros/lyrical/setup.zsh'
+echo "Per attivarlo in una shell: ros (alias in .zshrc)"

@@ -8,15 +8,24 @@ POLICY_SOURCE="$CONFIG_ROOT/brave/policies/minimal.json"
 POLICY_DIR="/etc/brave/policies/managed"
 POLICY_DEST="$POLICY_DIR/dotfiles-minimal.json"
 
-FLAGS_FILE="$CONFIG_ROOT/brave/brave-flags.conf"
-
-FLAGS=(
-    "--hide-scrollbars"
-    "--disable-session-crashed-bubble"
-)
-
 install_brave() {
     echo "Setting up Brave..."
+
+    # ── Repository e pacchetto ───────────────────────────────────────
+    if ! command -v brave-browser >/dev/null 2>&1; then
+        sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg \
+            https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+        sudo tee /etc/apt/sources.list.d/brave-browser-release.sources >/dev/null <<'EOF2'
+Types: deb
+URIs: https://brave-browser-apt-release.s3.brave.com
+Suites: stable
+Components: main
+Architectures: amd64 arm64
+Signed-By: /usr/share/keyrings/brave-browser-archive-keyring.gpg
+EOF2
+        sudo apt update
+        sudo apt install -y brave-browser
+    fi
 
     # ── Validate policy ──────────────────────────────────────────────
     if [[ ! -r "$POLICY_SOURCE" ]]; then
@@ -34,19 +43,10 @@ install_brave() {
         "$POLICY_SOURCE" \
         "$POLICY_DEST"
 
-    # ── Brave flags ──────────────────────────────────────────────────
-    mkdir -p "$(dirname "$FLAGS_FILE")"
-    touch "$FLAGS_FILE"
-
-    for flag in "${FLAGS[@]}"; do
-        grep -Fxq -- "$flag" "$FLAGS_FILE" ||
-            printf '%s\n' "$flag" >> "$FLAGS_FILE"
-    done
 
     echo
     echo "Brave configured."
     echo "Policy: $POLICY_DEST"
-    echo "Flags:  $FLAGS_FILE"
     echo
     echo "Restart Brave and check brave://policy"
 }
@@ -57,22 +57,6 @@ remove_brave() {
     # ── Remove policy ────────────────────────────────────────────────
     sudo rm -f "$POLICY_DEST"
 
-    # ── Remove only flags managed by this script ────────────────────
-    if [[ -f "$FLAGS_FILE" ]]; then
-        tmp=$(mktemp)
-
-        cp "$FLAGS_FILE" "$tmp"
-
-        for flag in "${FLAGS[@]}"; do
-            sed -i "\|^${flag}$|d" "$tmp"
-        done
-
-        if [[ -s "$tmp" ]]; then
-            mv "$tmp" "$FLAGS_FILE"
-        else
-            rm -f "$tmp" "$FLAGS_FILE"
-        fi
-    fi
 
     echo "Brave setup removed."
     echo "Restart Brave."
@@ -88,7 +72,7 @@ case "${1:-install}" in
         ;;
 
     *)
-        echo "Usage: setup-brave [install|remove]" >&2
+        echo "Usage: _setup/brave [install|remove]" >&2
         exit 2
         ;;
 esac
