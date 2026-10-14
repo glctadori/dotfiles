@@ -73,7 +73,6 @@ alias diff='diff --color=auto'
 alias ip='ip -color=auto'
 
 alias g='git'
-alias p='sudo pacman'
 alias za='zathura'
 alias c='codex'
 
@@ -102,6 +101,12 @@ fi
 
 # ── fzf ─────────────────────────────────────────────────────────
 
+# Ubuntu installa fd come fdfind: fe, pj e i widget fzf chiamano fd.
+(( ! $+commands[fd] && $+commands[fdfind] )) && fd() { fdfind "$@" }
+
+# Anteprima senza dipendenze (lo script fzf-preview.sh non c'è nel pacchetto Debian).
+FZF_FILE_PREVIEW='if [ -d {} ]; then ls -la --color=always {}; else head -n 200 {}; fi'
+
 export FZF_DEFAULT_OPTS="
     --height=70%
     --min-height=20
@@ -120,10 +125,7 @@ export FZF_DEFAULT_OPTS="
 
 unset FZF_DEFAULT_OPTS_FILE
 
-export FZF_CTRL_T_COMMAND="fd --hidden --follow --exclude .git --exclude node_modules --strip-cwd-prefix"
-export FZF_ALT_C_COMMAND="fd --type d --hidden --follow --exclude .git --exclude node_modules --strip-cwd-prefix"
-
-export FZF_CTRL_T_OPTS="--preview='/usr/share/fzf/fzf-preview.sh {}' --header='Invio: inserisci  ·  Tab: seleziona  ·  Ctrl-/: anteprima'"
+export FZF_CTRL_T_OPTS="--preview='$FZF_FILE_PREVIEW' --header='Invio: inserisci  ·  Tab: seleziona  ·  Ctrl-/: anteprima'"
 export FZF_ALT_C_OPTS="--header='Invio: entra nella directory'"
 
 # fzf shell integration
@@ -185,7 +187,7 @@ fe() {
                 --print0 |
             fzf --read0 --print0 --multi \
                 --prompt='file ❯ ' \
-                --preview='/usr/share/fzf/fzf-preview.sh {}' \
+                --preview="$FZF_FILE_PREVIEW" \
                 --header='Invio: apri  ·  Tab: seleziona  ·  Ctrl-/: anteprima'
     ) || return
 
