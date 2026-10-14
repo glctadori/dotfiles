@@ -12,9 +12,18 @@ printf '\nSTART_CHARGE_THRESH_BAT1=75\nSTOP_CHARGE_THRESH_BAT1=80\nUSB_AUTOSUSPE
     sudo tee -a /etc/tlp.conf >/dev/null
 sudo tlp start
 
-sudo tee /etc/udev/rules.d/90-usb-wakeup.rules >/dev/null <<'EOF2'
-# Enable wake-up for USB devices, hubs and root hubs.
-ACTION=="add|change", SUBSYSTEM=="usb", TEST=="power/wakeup", ATTR{power/wakeup}="enabled"
+# Niente wake da USB: col dock collegato il portatile si risvegliava dopo pochi
+# secondi da ogni suspend. Si sveglia con il tasto power o aprendo il coperchio.
+sudo rm -f /etc/udev/rules.d/90-usb-wakeup.rules /etc/udev/rules.d/90-usb-wakeup.rules.disabled
+
+# Il kernel registra cosa risveglia dal suspend; `suspend-report` lo riassume.
+echo 'w /sys/power/pm_debug_messages - - - - 1' | sudo tee /etc/tmpfiles.d/pm-debug.conf >/dev/null
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/pm-debug.conf
+
+# Hotspot iPhone via USB: dopo un suspend l'iPhone si ricollega e usbmuxd lo
+# perde, quindi niente Ethernet e richiesta "Autorizza" sul telefono.
+# Riavviarlo quando ricompare l'interfaccia lo fa ripartire con l'abbinamento salvato.
+sudo tee /etc/udev/rules.d/90-iphone-usbmuxd.rules >/dev/null <<'EOF2'
+ACTION=="add", SUBSYSTEM=="net", DRIVERS=="ipheth", RUN+="/usr/bin/systemctl --no-block try-restart usbmuxd.service"
 EOF2
 sudo udevadm control --reload-rules
-sudo udevadm trigger --subsystem-match=usb

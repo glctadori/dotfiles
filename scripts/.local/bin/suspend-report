@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Durata reale dei suspend e causa del risveglio.
+# I messaggi di wake richiedono pm_debug_messages (attivato da _setup/laptop).
+#
+#   suspend-report            ultimi 3 giorni
+#   suspend-report "-12h"     intervallo per journalctl --since
+set -euo pipefail
+
+SINCE="${1:--3d}"
+
+journalctl --since "$SINCE" --no-pager -o short-iso \
+    -g 'Performing sleep operation|System returned from sleep|PM: (Triggering wakeup|Wakeup|wakeup)|ACPI: (PM: )?(Wakeup|GPE)|Wakeup (source|IRQ)|pm_wakeup|wakeup from' |
+awk '
+    /Performing sleep operation/ { start = $1; cause = ""; next }
+    /System returned from sleep/ {
+        if (start == "") next
+        cmd = "date -d " start " +%s"; cmd | getline a; close(cmd)
+        cmd = "date -d " $1 " +%s"; cmd | getline b; close(cmd)
+        d = b - a
+        printf "%s  %7ss  %-6s %s\n", substr(start, 1, 16), d, (d > 60 ? "ok" : "LAMPO"), cause
+        start = ""; next
+    }
+    start != "" {
+        sub(/^[^ ]+ [^ ]+ kernel: /, "")
+        cause = cause (cause == "" ? "" : " | ") $0
+    }
+'
+
+irq="$(cat /sys/power/pm_wakeup_irq 2>/dev/null || true)"
+if [[ -n "$irq" ]]; then
+    echo
+    echo "Ultimo risveglio da IRQ $irq: $(awk -v n="$irq:" '$1 == n { $1 = ""; print }' /proc/interrupts | awk '{ print $NF, $(NF-1) }')"
+fi
+
+if [[ "$(cat /sys/power/pm_debug_messages 2>/dev/null)" != 1 ]]; then
+    echo
+    echo "Nota: pm_debug_messages è spento, la causa del risveglio non viene registrata."
+fi
