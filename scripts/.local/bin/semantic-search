@@ -17,11 +17,6 @@ MODELS = {
 }
 
 CORPORA = {
-    "library": {
-        "type": "pdf",
-        "source": "~/docs/library",
-        "index": "~/.local/share/semantic-index/library",
-    },
     "wiki": {
         "type": "markdown",
         "source": "~/projects/notes",

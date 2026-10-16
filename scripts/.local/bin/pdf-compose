@@ -75,8 +75,8 @@ def main():
     )
     parser.add_argument("list", type=Path, help="lista UTF-8: libro.pdf | 12-28,35")
     parser.add_argument("output", type=Path, help="nuovo PDF da creare (non sovrascrive)")
-    parser.add_argument("--books-dir", type=Path, default=Path.home() / "docs/library",
-                        help="cartella dei sorgenti (default: ~/docs/library)")
+    parser.add_argument("--books-dir", type=Path, default=Path.home() / "docs/libri",
+                        help="cartella dei sorgenti (default: ~/docs/libri)")
     parser.add_argument("--dry-run", action="store_true", help="verifica e mostra la selezione senza scrivere")
     args = parser.parse_args()
     try:

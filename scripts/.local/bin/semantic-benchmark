@@ -67,7 +67,7 @@ def main():
     parser.add_argument(
         "corpus",
         nargs="?",
-        default="library",
+        default="wiki",
     )
 
     parser.add_argument(

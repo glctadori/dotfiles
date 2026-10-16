@@ -171,11 +171,7 @@ function M.search(corpus)
   local function choose(query)
     query = vim.trim(query or "")
     if query == "" then return end
-    if corpus then return M.run(corpus, query) end
-    vim.ui.select({ "Library", "Wiki" },
-      { prompt = "Cerca in:" }, function(choice)
-        if choice then M.run(choice:lower(), query) end
-      end)
+    M.run(corpus or "wiki", query)
   end
   if selected and selected ~= "" then
     vim.schedule(function() choose(selected) end)

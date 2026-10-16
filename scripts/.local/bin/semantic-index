@@ -25,11 +25,6 @@ MIN_CHUNK = 200
 BATCH_SIZE = 32
 
 CORPORA = {
-    "library": {
-        "type": "pdf",
-        "source": "~/docs/library",
-        "index": "~/.local/share/semantic-index/library",
-    },
     "wiki": {
         "type": "markdown",
         "source": "~/projects/notes",
@@ -262,9 +257,8 @@ def remove_deleted_files(db, existing_paths):
             )
 
 
-def markdown_chunks(path):
+def line_chunks(lines, first):
     """Chunk complete lines, keeping their exact 1-based starting line."""
-    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
     start = 0
     while start < len(lines):
         end = start
@@ -274,7 +268,7 @@ def markdown_chunks(path):
             end += 1
         text = "".join(lines[start:end]).strip()
         if text:
-            yield start + 1, text
+            yield first + start, text
         if end == len(lines):
             break
         next_start = end
@@ -283,6 +277,45 @@ def markdown_chunks(path):
             next_start -= 1
             overlap += len(lines[next_start])
         start = next_start
+
+
+def markdown_sections(lines):
+    """Split at ATX headings outside code fences.
+
+    Yields (0-based start, lines, heading breadcrumb).
+    """
+    trail = []
+    start = 0
+    fence = False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith(("```", "~~~")):
+            fence = not fence
+        stripped = line.lstrip("#")
+        level = len(line) - len(stripped)
+        if fence or not 1 <= level <= 6 or not stripped.startswith(" "):
+            continue
+        if i > start:
+            yield start, lines[start:i], [t for _, t in trail]
+        trail = [(l, t) for l, t in trail if l < level] + [(level, stripped.strip())]
+        start = i
+    yield start, lines[start:], [t for _, t in trail]
+
+
+def markdown_chunks(path):
+    """Chunk by heading section, splitting long sections by lines.
+
+    Each chunk is prefixed with its note and parent headings so that it
+    remains understandable (and embeddable) on its own.
+    """
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    for start, section, trail in markdown_sections(lines):
+        # Skip headings with no body: their title is in the children's trail.
+        if not "".join(section[1 if trail else 0:]).strip():
+            continue
+        for line, text in line_chunks(section, start + 1):
+            # Continuation chunks have lost the section's own heading line.
+            parents = trail[:-1] if line == start + 1 else trail
+            yield line, f"[{' > '.join([path.stem] + parents)}]\n{text}"
 
 
 def index_pdf(db, path, model, source_type="pdf"):

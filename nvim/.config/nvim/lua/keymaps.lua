@@ -237,7 +237,7 @@ end, { desc = "Search current buffer" })
 
 vim.keymap.set({ "n", "x" }, "<leader>sk", function()
   require("knowledge_search").search()
-end, { desc = "Search library / wiki" })
+end, { desc = "Search wiki" })
 
 vim.keymap.set("n", "<leader>sr", function()
   require("knowledge_search").show()
@@ -246,10 +246,6 @@ end, { desc = "Reopen knowledge search results" })
 vim.keymap.set({ "n", "x" }, "<leader>sw", function()
   require("knowledge_search").search("wiki")
 end, { desc = "Semantic search wiki" })
-
-vim.keymap.set({ "n", "x" }, "<leader>sl", function()
-  require("knowledge_search").search("library")
-end, { desc = "Semantic search library" })
 
 vim.keymap.set("n", "<leader>sh", function()
   require("knowledge_search").history()

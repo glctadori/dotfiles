@@ -148,7 +148,7 @@ the selection summary goes to stderr. Existing output files are never overwritte
 and the destination directory must already exist. Password-protected PDFs requiring
 a password are rejected.
 
-Relative source paths resolve under `~/docs/library`; use `--books-dir DIRECTORY`
+Relative source paths resolve under `~/docs/libri`; use `--books-dir DIRECTORY`
 to change this or write absolute paths in the list. Sources are never modified.
 An LLM may optionally reorder the list beforehand using topic comments, preserving
 every filename and page selection; the command itself makes no LLM calls.

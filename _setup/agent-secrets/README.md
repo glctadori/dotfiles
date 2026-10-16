@@ -28,7 +28,7 @@ repository file, or log message. The service cannot read your home or pass store
 
 ```sh
 semantic-search wiki "query" --format json
-semantic-index library
+semantic-index wiki
 ```
 
 None of these commands needs sudo. Both semantic tools use `agent-embeddings`
