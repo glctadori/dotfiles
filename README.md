@@ -119,7 +119,7 @@ new files through the existing dotfiles layout.
 ## PDF excerpts
 
 `pdf-compose` extracts and concatenates pages from existing books using Python 3
-and `qpdf` (installed by `_setup/printer`). Source books stay in `~/docs/library`;
+and `qpdf` (installed by `_setup/printer`). Source books stay in `~/docs/libri`;
 keep the selection notes and composed PDF in `~/in` for now.
 
 Write a UTF-8 text file such as `~/in/stampa.txt`, with one selection per line:
