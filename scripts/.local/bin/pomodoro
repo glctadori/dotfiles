@@ -1,0 +1,55 @@
+#!/bin/sh
+# Pomodoro di 30 minuti: allo scadere blocca lo schermo con hyprlock.
+# Senza argomenti avvia il timer, o lo ferma se è già in corso.
+# `pomodoro stop` lo ferma. Stato in $XDG_RUNTIME_DIR, letto da waybar-pomodoro.
+set -eu
+
+minutes=${POMODORO_MINUTES:-30}
+state=${XDG_RUNTIME_DIR:-/tmp}/pomodoro
+
+refresh() { pkill -RTMIN+10 waybar 2>/dev/null || :; }
+
+running() { [ -f "$state" ] && kill -0 "$(sed -n 2p "$state")" 2>/dev/null; }
+
+stop() {
+    if running; then
+        kill "$(sed -n 2p "$state")" 2>/dev/null || :
+        notify-send -u low "󱎫  Pomodoro fermato"
+    fi
+    rm -f "$state"
+    refresh
+}
+
+# Confronta l'orologio reale e non usa un unico `sleep`: il tempo passato in
+# suspend conta come trascorso.
+run() {
+    end=$1
+    warned=
+    while now=$(date +%s); [ "$now" -lt "$end" ]; do
+        if [ -z "$warned" ] && [ $((end - now)) -le 60 ]; then
+            notify-send -u normal "󱎫  Pomodoro" "Manca un minuto: salva il lavoro"
+            warned=1
+        fi
+        sleep 5
+    done
+    rm -f "$state"
+    refresh
+    notify-send -u critical "󱎫  Pomodoro finito" "Alzati e fai una pausa"
+    pidof hyprlock >/dev/null || hyprlock
+}
+
+case ${1:-toggle} in
+    toggle)
+        if running; then stop; exit; fi
+        end=$(( $(date +%s) + minutes * 60 ))
+        setsid -f "$0" run "$end" >/dev/null 2>&1
+        ;;
+    run)
+        printf '%s\n%s\n' "$2" "$$" > "$state"
+        refresh
+        notify-send -u low "󱎫  Pomodoro avviato" "$minutes minuti, poi lo schermo si blocca"
+        run "$2"
+        ;;
+    stop) stop ;;
+    *) echo "uso: pomodoro [toggle|stop]" >&2; exit 2 ;;
+esac

@@ -69,3 +69,7 @@ window#waybar {
     padding: 0;
 }
 
+
+#custom-pomodoro.ending {
+    font-weight: bold;
+}

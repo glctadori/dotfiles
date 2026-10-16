@@ -13,6 +13,7 @@
     ],
 
     "modules-right": [
+        "custom/pomodoro",
         "custom/idle",
         "custom/claude",
         // nascosti, non eliminati: "custom/codex", "custom/openrouter",
@@ -38,6 +39,14 @@
         "signal": 9,
         "interval": 30,
         "on-click": "~/.local/bin/idle-toggle"
+    },
+
+    "custom/pomodoro": {
+        "exec": "~/.local/bin/waybar-pomodoro",
+        "return-type": "json",
+        "signal": 10,
+        "interval": 1,
+        "on-click": "~/.local/bin/pomodoro"
     },
 
     "custom/claude": {

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Pomodoro
+Comment=Timer di 30 minuti, poi blocca lo schermo
+Exec=pomodoro
+Icon=appointment-soon
+Categories=Utility;
+Keywords=script;pomodoro;timer;

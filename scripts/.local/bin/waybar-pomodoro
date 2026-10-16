@@ -1,0 +1,13 @@
+#!/bin/sh
+# Minuti rimanenti del pomodoro per Waybar; vuoto se non è in corso.
+state=${XDG_RUNTIME_DIR:-/tmp}/pomodoro
+if [ -f "$state" ] && kill -0 "$(sed -n 2p "$state")" 2>/dev/null; then
+    left=$(( $(sed -n 1p "$state") - $(date +%s) ))
+    [ "$left" -lt 0 ] && left=0
+    class=on
+    [ "$left" -le 300 ] && class=ending
+    printf '{"text": "󱎫 %d:%02d", "tooltip": "Pomodoro: clic per fermare", "class": "%s"}\n' \
+        $((left / 60)) $((left % 60)) "$class"
+else
+    echo '{"text": "", "class": "inactive"}'
+fi
