@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 import urllib.request
 
-ICON = '󰧑'  # nf-md-brain
 
 
 def fetch():
@@ -36,7 +35,7 @@ def render(data):
         raise ValueError('Nessuna quota disponibile')
     lowest = min(values)
     return {
-        'text': f'{ICON} ' + ' / '.join(f'{v}%' for v in values),
+        'text': ' / '.join(f'{v}%' for v in values),
         'tooltip': '\n'.join(tooltip), 'percentage': lowest,
         'class': 'critical' if lowest <= 10 else 'warning' if lowest <= 25 else 'normal',
     }

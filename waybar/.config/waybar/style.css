@@ -73,3 +73,11 @@ window#waybar {
 #custom-pomodoro.ending {
     font-weight: bold;
 }
+
+#custom-claude {
+    background-image: url("claude-code.svg");
+    background-repeat: no-repeat;
+    background-position: 8px center;
+    background-size: 16px 12px;
+    padding-left: 30px;
+}
