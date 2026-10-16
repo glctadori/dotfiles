@@ -75,6 +75,7 @@ alias ip='ip -color=auto'
 alias g='git'
 alias za='zathura'
 alias c='codex'
+alias opus='claude --model opus'
 
 alias cad='cd ~/projects/cad'
 

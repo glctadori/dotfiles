@@ -12,16 +12,26 @@ case "$action" in
         ;;
 esac
 
-if ! command -v fd >/dev/null 2>&1 || ! command -v fzf >/dev/null 2>&1; then
-    echo "Errore: fd e fzf devono essere installati." >&2
+# Su Ubuntu fd si chiama fdfind; l'alias zsh "fd" qui non esiste.
+fd_bin=$(command -v fd || command -v fdfind || true)
+
+if [ -z "$fd_bin" ] || ! command -v fzf >/dev/null 2>&1; then
+    echo "Errore: fd (o fdfind) e fzf devono essere installati." >&2
+    read -r _
     exit 1
 fi
 
 destination=$(
     {
         printf '%s\n' "${HOME:?}"
-        fd-find --hidden --type d --exclude .git . "$HOME"
-    } | fzf --prompt='Directory > ' --height=100% --reverse
+        "$fd_bin" --hidden --type d \
+            --exclude .git --exclude node_modules --exclude .cache \
+            --exclude .npm --exclude .tmp --exclude __pycache__ \
+            --exclude .venv --exclude BraveSoftware \
+            . "$HOME"
+    } | fzf --prompt='Directory > ' --height=100% --reverse \
+        --scheme=path --preview='ls -A --color=always {}' \
+        --preview-window=right,40%
 ) || exit 0
 
 [ -n "$destination" ] || exit 0
