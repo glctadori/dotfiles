@@ -13,7 +13,7 @@ color prompt bold cyan default
 color progress black cyan
 color tilde brightblack default
 color tree brightblack default
-color status black cyan
+color status cyan brightblack
 color search black yellow
 
 # Indice: colori distinti per data, mittente e oggetto mantengono la lista
@@ -40,6 +40,9 @@ color header magenta default "^(Reply-To|Message-ID):"
 # Contenuto del messaggio
 color body underline cyan default "(https?|ftp)://[^ \">]+"
 color body magenta default "[-a-zA-Z0-9_.]+@[a-zA-Z0-9_.-]+"
+# Codici di verifica (OTP) e residui di bullet/divisori dell'HTML
+color body bold yellow default "\\<[0-9]{6,8}\\>"
+color body brightblack default "^[[:space:]]*[-*•─_=]+[[:space:]]*$"
 color body bold yellow default "(^|[[:space:]])(TODO|FIXME|ATTENZIONE|IMPORTANT[E]?)[: ]"
 
 # Citazioni annidate
@@ -51,6 +54,7 @@ color quoted4 yellow default
 
 # Allegati e firme
 color attachment bold cyan default
+color attach_headers brightblack default
 color signature brightblack default
 
 # Compositore

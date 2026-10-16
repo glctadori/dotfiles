@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Apre i link della mail mostrata nel pager di NeoMutt.
+
+Legge la copia del testo che il display-filter salva in ~/.cache/neomutt,
+quindi i numeri [N] coincidono con quelli di w3m nel pager. Va lanciato con
+`source "neomutt-links <modo>|"`: stampa un comando `echo` per la riga dei
+messaggi di NeoMutt.
+
+  pick  sceglie il link con fuzzel (anche gli URL delle mail in testo semplice)
+  open  chiede il numero del link sulla riga in basso, come un prompt di NeoMutt
+"""
+
+import os
+import re
+import subprocess
+import sys
+import termios
+import tty
+from urllib.parse import urlsplit
+
+CACHE = os.path.join(
+    os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")),
+    "neomutt", "pager.txt")
+REF = re.compile(r"^\[(\d+)\]\s+(\S+)\s*$")
+URL = re.compile(r"(?:https?|ftp)://[^\s<>\"'\[\]()]+")
+
+
+def message(text):
+    print("echo '%s'" % text.replace("'", ""))
+
+
+def parse(text):
+    """Restituisce i link numerati di w3m e gli altri URL trovati nel testo."""
+    lines = text.splitlines()
+    try:
+        start = max(i for i, l in enumerate(lines) if l.strip() == "References:")
+    except ValueError:
+        start = len(lines)
+    refs = {}
+    for line in lines[start:]:
+        m = REF.match(line)
+        if m:
+            refs[int(m.group(1))] = m.group(2)
+
+    # w3m scrive il numero prima del testo del link: `[4]impostazioni email`.
+    # L'etichetta va fino al link successivo, o sulla riga dopo se è vuota.
+    labels = {}
+    for i, line in enumerate(lines[:start]):
+        marks = list(re.finditer(r"\[(\d+)\]", line))
+        for j, m in enumerate(marks):
+            n = int(m.group(1))
+            end = marks[j + 1].start() if j + 1 < len(marks) else len(line)
+            label = " ".join(line[m.end():end].split())
+            if not label and j + 1 == len(marks) and i + 1 < start:
+                label = " ".join(re.split(r"\[\d+\]", lines[i + 1])[0].split())
+            if n in refs and n not in labels:
+                labels[n] = label[:60]
+
+    seen = set(refs.values())
+    plain = []
+    for m in URL.finditer("\n".join(lines[:start])):
+        url = m.group(0).rstrip(".,;:!?")
+        if url not in seen:
+            seen.add(url)
+            plain.append(url)
+    return refs, labels, plain
+
+
+def domain(url):
+    host = urlsplit(url).hostname or url
+    return host.removeprefix("www.")
+
+
+def launch(url):
+    subprocess.Popen(["setsid", "-f", "xdg-open", url],
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL)
+    message("Aperto " + domain(url))
+
+
+def pick(refs, labels, plain):
+    urls, rows = [], []
+    for n, url in sorted(refs.items()):
+        urls.append(url)
+        rows.append(f"{n:>3}  {labels.get(n, '')}  ·  {domain(url)}")
+    for url in plain:
+        urls.append(url)
+        rows.append(f"     {url[:100]}")
+    if not urls:
+        return message("Nessun link")
+    result = subprocess.run(
+        ["fuzzel", "--dmenu", "--index", "--prompt", "Link: ", "--width", "80"],
+        input="\n".join(rows), capture_output=True, text=True)
+    if result.returncode == 0 and result.stdout.strip():
+        launch(urls[int(result.stdout)])
+    else:
+        message("")
+
+
+def ask_number(top):
+    """Legge un numero sulla riga in basso mentre NeoMutt aspetta il comando.
+
+    Apre da solo quando nessun numero più lungo è possibile; Invio conferma,
+    Esc o Ctrl+G annullano.
+    """
+    with open("/dev/tty", "r+b", buffering=0) as t:
+        fd = t.fileno()
+        rows = os.get_terminal_size(fd).lines
+        saved = termios.tcgetattr(fd)
+        typed = ""
+
+        def draw(text):
+            t.write(f"\0337\033[{rows};1H\033[2K{text}\0338".encode())
+
+        try:
+            tty.setcbreak(fd)
+            while True:
+                draw(f"\033[1;36mLink (1-{top}):\033[0m {typed}")
+                ch = t.read(1)
+                if ch.isdigit():
+                    if int(typed + ch.decode()) <= top:
+                        typed += ch.decode()
+                        if int(typed) * 10 > top:
+                            break
+                elif ch in (b"\x7f", b"\b"):
+                    typed = typed[:-1]
+                elif ch in (b"\r", b"\n"):
+                    break
+                elif ch in (b"\x1b", b"\x07", b"\x03", b"q"):
+                    typed = ""
+                    break
+        finally:
+            draw("")
+            termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+    return int(typed) if typed else None
+
+
+def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "pick"
+    try:
+        with open(CACHE, encoding="utf-8", errors="replace") as f:
+            refs, labels, plain = parse(f.read())
+    except FileNotFoundError:
+        return message("Apri prima una mail")
+
+    if mode == "pick":
+        return pick(refs, labels, plain)
+    if not refs:
+        return message("Nessun link numerato: usa U")
+    n = ask_number(max(refs))
+    if n is None:
+        message("")
+    elif n in refs:
+        launch(refs[n])
+    else:
+        message(f"Nessun link [{n}]")
+
+
+if __name__ == "__main__":
+    main()

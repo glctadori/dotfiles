@@ -1,0 +1,11 @@
+#!/bin/sh
+# Filtro del pager di NeoMutt: toglie i banner di autoview (preceduti da un
+# marcatore invisibile, quindi niente ^), i bullet orfani dell'HTML e accorcia
+# gli URL lunghi al solo dominio. Il testo originale resta in
+# ~/.cache/neomutt/pager.txt per neomutt-links (tasti o e U).
+cache=${XDG_CACHE_HOME:-"$HOME/.cache"}/neomutt
+mkdir -p "$cache"
+tee "$cache/pager.txt" | exec sed -E \
+	-e '/\[-- Autoview /d' \
+	-e '/^[[:space:]]*[*•][[:space:]]*$/d' \
+	-e 's#(https?://[^/[:space:]]+)/[^[:space:]]{40,}#\1/…#g'

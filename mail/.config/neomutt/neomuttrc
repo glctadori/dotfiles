@@ -14,6 +14,8 @@ auto_view text/html
 # conversione HTML di w3m e usa il testo semplice come ripiego.
 alternative_order text/html text/plain
 set implicit_autoview = yes
+# Pulisce il pager: banner di autoview, bullet orfani, URL lunghi.
+set display_filter = "~/.config/neomutt/display-filter"
 
 # Applica subito spostamenti/eliminazioni avviati dal menu azioni.
 set delete = yes
@@ -26,7 +28,7 @@ set editor = "nvim"
 set sort = reverse-date
 set index_format = " %Z  %{%d %b}  %-20.20F  %s"
 set status_format = " %D  %<u? %u  >%m messaggi%<F?   %F>%> %P "
-set pager_format = " %Z  %C/%m  %-22.22F  %s%* %P "
+set pager_format = "  %C/%m    %-22.22F   %s%*   %[%a %d %b %H:%M]   %P "
 set compose_format = " Nuovo messaggio  %a allegati%> %l "
 # Keep the index and message views separate: `l` opens the selected message.
 set pager_index_lines = 0
@@ -35,6 +37,11 @@ set reflow_wrap = 100
 set reflow_text = yes
 set help = no
 set markers = no
+
+# Header: solo mittente, destinatari e oggetto; la data è nella barra del pager.
+ignore *
+unignore from: to: cc: subject:
+hdr_order From: Subject: To: Cc:
 
 # Default account
 source ~/.config/neomutt/accounts/gmail
@@ -51,6 +58,8 @@ bind index G last-entry
 bind index r reply
 bind index m mail
 macro index <Space> "<tag-entry>" "Seleziona e passa alla mail successiva"
+macro index A "<tag-pattern>~U<enter><tag-prefix><clear-flag>N<untag-pattern>.<enter>" "Segna tutte come lette"
+macro index S "<shell-escape>mail-sync<enter><check-stats><sync-mailbox>" "Sincronizza la posta (mbsync)"
 
 # Pager
 bind pager h exit
@@ -71,9 +80,14 @@ bind editor <Tab> complete-query
 macro index,pager a "<enter-command>set my_pipe_decode=\$pipe_decode pipe_decode<return><pipe-message>abook --add-email<return><enter-command>set pipe_decode=\$my_pipe_decode; unset my_pipe_decode<return>" "add the sender address to abook"
 macro index,pager B "<shell-escape>abook<enter>" "browse/edit address book"
 
-# Scan URLS
-macro index,pager \cu "<pipe-message>urlscan<enter>" "Open URLs"
-macro index,pager U "<pipe-message>urlscan --dedupe --single --nohelp --whitespace-off<enter>" "Scegli e apri un link"
+# Link: `o` + numero apre il link [N] di w3m, `U` sceglie con fuzzel.
+# neomutt-links legge il testo salvato dal display-filter, quindi dall'indice
+# apre prima la mail.
+macro pager o "<enter-command>source 'neomutt-links open|'<enter>" "Apri il link numero N"
+macro pager U "<enter-command>source 'neomutt-links pick|'<enter>" "Scegli e apri un link"
+macro index o "<display-message>o" "Apri il link numero N"
+macro index U "<display-message>U" "Scegli e apri un link"
+macro index,pager \cu "<pipe-message>urlscan<enter>" "Tutti gli URL in urlscan"
 
 # Account switching
 bind index i noop
