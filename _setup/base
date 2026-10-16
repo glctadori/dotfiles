@@ -59,7 +59,7 @@ echo 'deb [signed-by=/usr/share/keyrings/yazi-keyring.gpg] https://yazi-rs.githu
 
 sudo apt update
 sudo apt install -y \
-    sway kitty mako-notifier libnotify-bin pipewire pipewire-pulse wireplumber \
+    kitty mako-notifier libnotify-bin pipewire pipewire-pulse wireplumber \
     neovim pass bubblewrap stow build-essential udiskie tree-sitter-cli xdg-desktop-portal \
     mesa-utils vainfo intel-media-va-driver-non-free restic mpv intel-gpu-tools \
     network-manager keyd lazygit unzip hyprland hyprpolkitagent hyprland-qtutils \

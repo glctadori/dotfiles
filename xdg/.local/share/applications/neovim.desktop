@@ -1,6 +1,7 @@
 [Desktop Entry]
 Name=Neovim
-Exec=foot -e nvim %F
+Exec=kitty --single-instance nvim %F
+Icon=nvim
 Terminal=false
 Type=Application
 MimeType=text/plain;text/markdown;
