@@ -12,6 +12,10 @@ printf '\nSTART_CHARGE_THRESH_BAT1=75\nSTOP_CHARGE_THRESH_BAT1=80\nUSB_AUTOSUSPE
     sudo tee -a /etc/tlp.conf >/dev/null
 sudo tlp start
 
+# Avviso batteria bassa e sospensione al 5%: sotto quella soglia il dock non
+# riesce più a ricaricare la batteria.
+systemctl --user enable --now battery-alert.timer
+
 # Niente wake da USB: col dock collegato il portatile si risvegliava dopo pochi
 # secondi da ogni suspend. Si sveglia con il tasto power o aprendo il coperchio.
 sudo rm -f /etc/udev/rules.d/90-usb-wakeup.rules /etc/udev/rules.d/90-usb-wakeup.rules.disabled

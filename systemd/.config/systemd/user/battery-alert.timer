@@ -1,0 +1,12 @@
+# Controlla la batteria ogni minuto.
+# Enable with: systemctl --user enable --now battery-alert.timer
+[Unit]
+Description=Controlla la batteria ogni minuto
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

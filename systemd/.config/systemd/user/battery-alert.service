@@ -1,0 +1,7 @@
+# Notifica la batteria bassa e sospende al 5%; avviato da battery-alert.timer.
+[Unit]
+Description=Avviso batteria bassa
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/battery-alert

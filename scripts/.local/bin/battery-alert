@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Avvisa quando la batteria si scarica; lanciato ogni minuto da battery-alert.timer.
+# Scarica a fondo, attraverso il dock non si ricarica più (serve
+# l'alimentatore collegato direttamente), quindi al 5% sospende.
+set -euo pipefail
+
+bat=/sys/class/power_supply/BAT1
+state="${XDG_RUNTIME_DIR:-/tmp}/battery-alert"
+[[ -r $bat/capacity ]] || exit 0
+
+capacity="$(<"$bat/capacity")"
+status="$(<"$bat/status")"
+
+if [[ $status != Discharging ]]; then
+    rm -f "$state"
+    exit 0
+fi
+
+last="$(cat "$state" 2>/dev/null || echo 100)"
+
+if (( capacity <= 5 )); then
+    notify-send -u critical -i battery-empty "Batteria al ${capacity}%" "Sospensione tra 30 secondi. Collega l'alimentatore direttamente, non il dock."
+    sleep 30
+    [[ "$(<"$bat/status")" == Discharging ]] && systemctl suspend
+elif (( capacity <= 10 && last > 10 )); then
+    echo "$capacity" >"$state"
+    notify-send -u critical -i battery-caution "Batteria al ${capacity}%" "Al 5% il PC va in sospensione."
+elif (( capacity <= 20 && last > 20 )); then
+    echo "$capacity" >"$state"
+    notify-send -u normal -i battery-low "Batteria al ${capacity}%" "Collega l'alimentatore."
+fi
