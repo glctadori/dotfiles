@@ -2,7 +2,13 @@
 Description=Aggiorna le blocklist del filtro web
 After=network-online.target
 Wants=network-online.target
+# Il giro perso col portatile sospeso parte al resume, spesso prima della rete:
+# riprova ogni 15 minuti invece di aspettare il giorno dopo.
+StartLimitIntervalSec=2h
+StartLimitBurst=4
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/libexec/web-filter-update
+Restart=on-failure
+RestartSec=15min

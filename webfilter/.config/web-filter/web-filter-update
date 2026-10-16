@@ -45,7 +45,8 @@ fetch() {
     normalized=$temporary/$name.domains
 
     curl --fail --silent --show-error --location \
-        --retry 3 --connect-timeout 15 --max-time 180 \
+        --retry 5 --retry-all-errors --retry-delay 10 \
+        --connect-timeout 15 --max-time 180 \
         "$url" -o "$raw"
     normalize "$raw" | LC_ALL=C sort -u >"$normalized"
     entries=$(wc -l <"$normalized")
