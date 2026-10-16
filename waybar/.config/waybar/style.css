@@ -47,6 +47,7 @@ window#waybar {
 }
 
 #network,
+#custom-idle,
 #custom-claude,
 #custom-codex,
 #custom-pomodoro,
@@ -58,6 +59,10 @@ window#waybar {
 #clock {
     background: transparent;
     padding: 0 6px;
+}
+
+#custom-idle.off {
+    padding: 0;
 }
 
 #custom-pomodoro.inactive {

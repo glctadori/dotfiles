@@ -1,0 +1,69 @@
+#!/bin/sh
+# Sceglie con fuzzel un disco esterno montato e lo rimuove in sicurezza:
+# sync, smonta tutte le partizioni, chiude i LUKS e spegne il disco.
+set -eu
+
+notify() { notify-send -a unmount -i drive-removable-media "$@"; }
+
+# Una riga per disco esterno con almeno un filesystem montato:
+# disco<TAB>hotplug<TAB>etichetta mostrata in fuzzel.
+# Esterno = usb/mmc, removibile o hotplug, e senza la root montata sopra.
+disks=$(lsblk -J -o NAME,PATH,TYPE,TRAN,RM,HOTPLUG,LABEL,MODEL,SIZE,MOUNTPOINTS | jq -r '
+  def mounts: [.. | objects | .mountpoints? // [] | .[] | select(. != null)];
+  .blockdevices[]
+  | select(.type == "disk")
+  | select(.tran == "usb" or .tran == "mmc" or .rm or .hotplug)
+  | (mounts) as $m
+  | select(($m | length) > 0 and ($m | index("/") | not))
+  | ([.. | objects | .label? | select(. != null)] | first) as $label
+  | [.path, (.hotplug | tostring),
+     "󰋊  \($label // .model // .name)  (\(.name), \(.size))  \($m | join(" "))"]
+  | @tsv')
+
+if [ -z "$disks" ]; then
+  notify "Nessun disco esterno montato"
+  exit 0
+fi
+
+choice=$(printf '%s\n' "$disks" | cut -f3 | fuzzel --dmenu --index --prompt 'Smonta: ') || exit 0
+line=$(printf '%s\n' "$disks" | sed -n "$((choice + 1))p")
+disk=$(printf '%s' "$line" | cut -f1)
+hotplug=$(printf '%s' "$line" | cut -f2)
+name=$(printf '%s' "$line" | cut -f3 | sed 's/^[^ ]*  //')
+
+sync
+
+# Dispositivi montati sotto il disco, dai più profondi (LUKS, LVM) in su.
+for dev in $(lsblk -nrpo PATH,MOUNTPOINTS "$disk" | awk 'NF > 1 { print $1 }' | sort -ru); do
+  if ! err=$(udisksctl unmount -b "$dev" 2>&1); then
+    users=$(lsblk -nro MOUNTPOINTS "$dev" | while read -r mp; do
+      [ -n "$mp" ] && fuser -Mm "$mp" 2>/dev/null; done | xargs -r ps -o comm= -p 2>/dev/null | sort -u | tr '\n' ' ')
+    notify -u critical "Impossibile smontare $dev" "${users:+In uso da: $users
+}$err"
+    exit 1
+  fi
+done
+
+# Chiude i container LUKS aperti sul disco.
+for crypt in $(lsblk -nrpo PATH,FSTYPE "$disk" | awk '$2 == "crypto_LUKS" { print $1 }'); do
+  if lsblk -nro TYPE "$crypt" | grep -qx crypt; then
+    udisksctl lock -b "$crypt" >/dev/null || {
+      notify -u critical "Impossibile chiudere LUKS su $crypt"
+      exit 1
+    }
+  fi
+done
+
+# Il lettore SD interno non va spento: sparirebbe fino al riavvio.
+if [ "$hotplug" = true ]; then
+  if udisksctl power-off -b "$disk" >/dev/null 2>&1; then
+    notify "Disco rimosso" "$name
+Puoi scollegarlo."
+  else
+    notify "Disco smontato" "$name
+Smontato ma non spento: puoi comunque scollegarlo."
+  fi
+else
+  notify "Disco smontato" "$name
+Puoi rimuoverlo."
+fi

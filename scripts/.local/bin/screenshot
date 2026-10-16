@@ -1,0 +1,21 @@
+#!/bin/sh
+# Screenshot in ~/in, copiato negli appunti.
+#   screenshot area     selezione con slurp (Print)
+#   screenshot screen   monitor a fuoco (Shift+Print)
+set -eu
+
+case "${1:-area}" in
+    area) geometry=$(slurp) || exit 0 ;;
+    screen) geometry= ;;
+    *) echo "Uso: ${0##*/} {area|screen}" >&2; exit 2 ;;
+esac
+
+mkdir -p "$HOME/in"
+file="$HOME/in/screenshot-$(date +%Y%m%d-%H%M%S).png"
+if [ -n "$geometry" ]; then
+    grim -g "$geometry" "$file"
+else
+    grim -o "$(hyprctl activeworkspace -j | jq -r .monitor)" "$file"
+fi
+wl-copy -t image/png < "$file"
+notify-send -i "$file" "Screenshot" "Salvato in ${file#"$HOME"/} e copiato negli appunti"

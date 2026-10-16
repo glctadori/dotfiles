@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Caffeine
+Comment=Ferma/avvia hypridle
+Exec=idle-toggle
+Icon=preferences-desktop-screensaver
+Categories=Utility;
+Keywords=script;idle-toggle;

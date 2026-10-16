@@ -1,0 +1,7 @@
+#!/bin/sh
+# Icona Waybar visibile solo quando hypridle è fermo (caffeine attivo).
+if pgrep -x hypridle >/dev/null; then
+    echo '{"text": "", "class": "off"}'
+else
+    echo '{"text": "󰅶", "tooltip": "Caffeine attivo: clic per disattivare", "class": "on"}'
+fi

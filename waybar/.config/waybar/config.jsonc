@@ -13,6 +13,7 @@
     ],
 
     "modules-right": [
+        "custom/idle",
         "custom/claude",
         // nascosti, non eliminati: "custom/codex", "custom/openrouter",
         "network",
@@ -29,6 +30,14 @@
     "hyprland/window": {
         "format": "{}",
         "max-length": 70
+    },
+
+    "custom/idle": {
+        "exec": "~/.local/bin/waybar-idle",
+        "return-type": "json",
+        "signal": 9,
+        "interval": 30,
+        "on-click": "~/.local/bin/idle-toggle"
     },
 
     "custom/claude": {

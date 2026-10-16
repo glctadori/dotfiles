@@ -1,0 +1,10 @@
+#!/bin/sh
+# Caffeine alla Omarchy: ferma/avvia hypridle (niente spegnimento schermo né suspend).
+if pgrep -x hypridle >/dev/null; then
+    pkill -x hypridle
+    notify-send -u low "󰅶  Caffeine attivo" "Schermo e suspend non scattano più"
+else
+    setsid -f hypridle >/dev/null 2>&1
+    notify-send -u low "󰾪  Caffeine disattivo" "Spegnimento schermo e suspend ripristinati"
+fi
+pkill -RTMIN+9 waybar

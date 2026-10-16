@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Smonta disco
+Comment=Smonta, chiude ed espelle in sicurezza un disco esterno
+Exec=unmount
+Icon=media-eject
+Categories=Utility;
+Keywords=script;unmount;eject;usb;disco;smonta;
