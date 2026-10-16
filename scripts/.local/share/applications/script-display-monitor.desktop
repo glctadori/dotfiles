@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Schermi
+Comment=Configura i monitor
+Exec=display-monitor
+Icon=video-display
+Categories=Utility;
+Keywords=script;display-monitor;

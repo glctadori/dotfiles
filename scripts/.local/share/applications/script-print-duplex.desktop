@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Stampa PDF
+Comment=Stampa un PDF, anche fronte/retro
+Exec=print-duplex
+Icon=printer
+Categories=Utility;
+Keywords=script;print-duplex;

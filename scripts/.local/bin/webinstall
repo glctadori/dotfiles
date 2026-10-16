@@ -56,7 +56,7 @@ cat > "$desktop" <<EOF
 [Desktop Entry]
 Version=1.0
 Name=$name
-Exec=brave-browser --app="$url"
+Exec=webapp-launch "$url"
 Icon=$icon
 Terminal=false
 Type=Application

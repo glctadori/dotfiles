@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Sistema
+Comment=Spegni, riavvia, suspend, lock, logout
+Exec=sysact
+Icon=system-shutdown
+Categories=Utility;
+Keywords=script;sysact;

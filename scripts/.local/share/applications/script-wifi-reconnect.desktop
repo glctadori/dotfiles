@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Riconnetti Wi-Fi
+Comment=Riavvia la connessione Wi-Fi
+Exec=wifi-reconnect
+Icon=network-wireless
+Categories=Utility;
+Keywords=script;wifi-reconnect;

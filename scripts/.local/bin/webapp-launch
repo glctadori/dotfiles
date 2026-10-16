@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Apre un URL come webapp Brave in finestra propria. Tutte le webapp condividono
+# un profilo dedicato (separato dal Brave principale), così le estensioni si
+# installano una volta sola. Uso: webapp-launch <url>
+set -euo pipefail
+
+exec brave-browser \
+    --user-data-dir="$HOME/.local/share/webapps/profile" \
+    --hide-scrollbars \
+    --app="$1"

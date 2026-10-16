@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Viewer CAD
+Comment=Apri il CAD Viewer di text-to-cad come webapp
+Exec=cad-viewer
+Icon=applications-engineering
+Categories=Utility;
+Keywords=script;cad-viewer;cad;3d;step;

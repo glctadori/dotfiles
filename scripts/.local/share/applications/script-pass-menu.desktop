@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Password
+Comment=Copia una password da pass
+Exec=pass-menu
+Icon=dialog-password
+Categories=Utility;
+Keywords=script;pass-menu;

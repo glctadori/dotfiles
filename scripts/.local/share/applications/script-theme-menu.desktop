@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Tema
+Comment=Cambia tema
+Exec=theme-menu
+Icon=preferences-desktop-theme
+Categories=Utility;
+Keywords=script;theme-menu;

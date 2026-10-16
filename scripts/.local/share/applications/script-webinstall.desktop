@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Installa web app
+Comment=Crea una web app
+Exec=webinstall
+Icon=applications-internet
+Categories=Utility;
+Keywords=script;webinstall;

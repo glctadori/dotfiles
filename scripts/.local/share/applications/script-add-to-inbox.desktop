@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Nota in inbox
+Comment=Aggiungi una nota all'inbox
+Exec=add-to-inbox
+Icon=accessories-text-editor
+Categories=Utility;
+Keywords=script;add-to-inbox;

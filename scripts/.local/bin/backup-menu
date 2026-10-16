@@ -1,0 +1,13 @@
+#!/bin/sh
+# Sceglie destinazione e azione di `backup` con fuzzel e la esegue in kitty.
+# Il terminale serve al restore (fzf) e a seguire backup e prune.
+set -eu
+
+kind=$(printf '%s\n' '󰋊  hdd' '󰅟  b2' | fuzzel --dmenu --prompt 'Backup: ') || exit 0
+kind=${kind##* }
+action=$(printf '%s\n' '󰁯  backup' '󰑓  restore' '󰃢  prune' | fuzzel --dmenu --prompt "Backup $kind: ") || exit 0
+action=${action##* }
+
+exec kitty --title "backup $kind $action" sh -c '
+  backup "$1" "$2"; status=$?
+  printf "\nUscita %s. Invio per chiudere." "$status"; read -r _' sh "$kind" "$action"

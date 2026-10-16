@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Backup
+Comment=Backup, restore o prune su HDD o B2
+Exec=backup-menu
+Icon=drive-harddisk
+Categories=Utility;
+Keywords=script;backup;restic;restore;

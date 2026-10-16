@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=YouTube
+Comment=Cerca e guarda video con mpv
+Exec=youtube
+Icon=multimedia-video-player
+Categories=Utility;
+Keywords=script;youtube;
