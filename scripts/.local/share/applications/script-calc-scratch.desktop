@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Calcolatrice
+Comment=Scratchpad flottante con qalc
+Exec=calc-scratch
+Icon=accessories-calculator
+Categories=Utility;
+Keywords=script;calc-scratch;calcolatrice;qalc;

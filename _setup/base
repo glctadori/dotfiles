@@ -73,7 +73,7 @@ sudo apt install -y \
     texlive-luatex texlive-latex-extra texlive-lang-italian latexmk pandoc
 sudo apt install -y \
     grim slurp wl-clipboard brightnessctl playerctl fuzzel waybar gammastep \
-    zoxide scdaemon usbmuxd
+    zoxide scdaemon usbmuxd qalc
 flatpak remote-add --if-not-exists flathub \
     https://flathub.org/repo/flathub.flatpakrepo
 flatpak install -y flathub \

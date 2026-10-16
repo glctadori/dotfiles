@@ -1,0 +1,8 @@
+#!/bin/sh
+# Calcolatrice qalc in uno scratchpad flottante. qalc vive in tmux: chiudendo la finestra
+# la sessione resta, e riaprendo si ritrova com'era.
+if hyprctl clients -j | jq -e '.[] | select(.class == "calc")' >/dev/null; then
+    hyprctl dispatch togglespecialworkspace calc >/dev/null
+else
+    exec kitty --single-instance --class calc -e tmux new-session -A -s calc qalc \; set status off
+fi
