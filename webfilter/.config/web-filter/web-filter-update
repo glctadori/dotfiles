@@ -4,7 +4,7 @@ set -eu
 
 state_dir=/var/lib/web-filter
 config_dir=/etc/web-filter
-destination=$config_dir/blocked-names.txt
+destination=$state_dir/base-names.txt
 temporary=$(mktemp -d "$state_dir/update.XXXXXX")
 trap 'rm -rf -- "$temporary"' EXIT HUP INT TERM
 
@@ -93,30 +93,17 @@ if [ -e "$destination" ]; then
 fi
 install -o root -g root -m 0644 "$temporary/blocked-names.txt" "$destination"
 
-if ! dnscrypt-proxy -check -config /etc/dnscrypt-proxy/dnscrypt-proxy.toml; then
-    if [ -e "$temporary/blocked-names.previous" ]; then
-        install -o root -g root -m 0644 \
-            "$temporary/blocked-names.previous" "$destination"
-    else
-        rm -f -- "$destination"
-    fi
-    echo 'web-filter: configurazione non valida; ripristinata la lista precedente.' >&2
-    exit 1
-fi
-
 date --iso-8601=seconds >"$state_dir/last-successful-update"
 chmod 0644 "$state_dir/last-successful-update"
 
-if systemctl is-active --quiet dnscrypt-proxy.service; then
-    if ! systemctl restart dnscrypt-proxy.service; then
-        if [ -e "$temporary/blocked-names.previous" ]; then
-            install -o root -g root -m 0644 \
-                "$temporary/blocked-names.previous" "$destination"
-            systemctl restart dnscrypt-proxy.service || true
-        fi
-        echo 'web-filter: riavvio fallito; ripristinata la lista precedente.' >&2
-        exit 1
+# Compone la lista finale (base + calendario), la verifica e riavvia dnscrypt-proxy.
+if ! /usr/local/libexec/web-filter-schedule; then
+    if [ -e "$temporary/blocked-names.previous" ]; then
+        install -o root -g root -m 0644 \
+            "$temporary/blocked-names.previous" "$destination"
     fi
+    echo 'web-filter: lista non applicata; ripristinata la base precedente.' >&2
+    exit 1
 fi
 
 echo "web-filter: aggiornamento completato ($entries domini)."

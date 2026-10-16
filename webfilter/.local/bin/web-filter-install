@@ -53,11 +53,22 @@ as_root install -o root -g root -m 0644 \
 as_root install -o root -g root -m 0755 \
     "$source_dir/web-filter-update" /usr/local/libexec/web-filter-update
 as_root install -o root -g root -m 0755 \
+    "$source_dir/web-filter-schedule" /usr/local/libexec/web-filter-schedule
+as_root install -o root -g root -m 0755 \
     "$source_dir/web-filter-control" /usr/local/sbin/web-filter
 as_root install -o root -g root -m 0644 \
     "$source_dir/web-filter-update.service" /etc/systemd/system/web-filter-update.service
 as_root install -o root -g root -m 0644 \
     "$source_dir/web-filter-update.timer" /etc/systemd/system/web-filter-update.timer
+as_root install -o root -g root -m 0644 \
+    "$source_dir/web-filter-schedule.service" /etc/systemd/system/web-filter-schedule.service
+as_root install -o root -g root -m 0644 \
+    "$source_dir/web-filter-schedule.timer" /etc/systemd/system/web-filter-schedule.timer
+# Il calendario e la sua lista vengono sempre dal repo: si modificano lì.
+as_root install -o root -g root -m 0644 \
+    "$source_dir/scheduled-names.txt" /etc/web-filter/scheduled-names.txt
+as_root install -o root -g root -m 0644 \
+    "$source_dir/schedule.conf" /etc/web-filter/schedule.conf
 
 if ! as_root test -e /etc/web-filter/allowed-names.txt; then
     as_root install -o root -g root -m 0644 \

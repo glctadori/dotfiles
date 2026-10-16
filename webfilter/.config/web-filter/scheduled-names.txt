@@ -1,0 +1,28 @@
+# Domini bloccati tutti i giorni tranne OPEN_DAY (vedi schedule.conf).
+# Una voce per riga, senza schema URL; vale anche per i sottodomini.
+# Scelti dalla cronologia Brave 5-16 ottobre 2026; da rivedere ogni settimana.
+
+# Confronto modelli e prezzi IA (uso il modello, non lo confronto)
+artificialanalysis.ai
+perplexity.ai
+gemini.google.com
+
+# Acquisti: ordini raggruppati nel giorno aperto
+amazon.it
+manomano.it
+agrieuro.com
+tecnomat.it
+robotstore.it
+eu.robotshop.com
+tme.eu
+idealo.it
+subito.it
+lidl.it
+amastone.it
+g2a.com
+
+# Personalizzazione desktop
+omarchy.org
+omarchytheme.com
+# eBay non è qui: serve ogni giorno per le vendite (il DNS non separa console e acquisti).
+# OpenRouter non è qui: l'API (openrouter.ai/api) serve a pi; Activity e prezzi solo la domenica.

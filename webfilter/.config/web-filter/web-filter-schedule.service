@@ -1,0 +1,6 @@
+[Unit]
+Description=Applica il calendario dei blocchi del filtro web
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/web-filter-schedule

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Apre in kitty la revisione settimanale del web (skill revisione-web).
+exec kitty --title "revisione web" --directory "$HOME/projects/dotfiles" claude /revisione-web

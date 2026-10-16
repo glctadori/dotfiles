@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Revisione web
+Comment=Revisione settimanale della cronologia e dei blocchi del filtro web
+Exec=web-review
+Icon=preferences-system-network
+Categories=Utility;
+Keywords=script;web-review;revisione;cronologia;filtro;

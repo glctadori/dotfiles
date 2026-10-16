@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Riepilogo della cronologia Brave per la revisione settimanale del filtro web.
+
+Uso: web-review-report [--days N | --since AAAA-MM-GG] [--mark]
+Senza opzioni parte dall'ultima revisione (--mark la registra), altrimenti
+dagli ultimi 7 giorni. Legge copie della cronologia: non tocca gli originali.
+"""
+import argparse, collections, datetime as dt, shutil, sqlite3, tempfile
+import urllib.parse as up
+from pathlib import Path
+
+HOME = Path.home()
+DBS = {
+    "browser": HOME / ".config/BraveSoftware/Brave-Browser/Default/History",
+    "webapp": HOME / ".local/share/webapps/profile/Default/History",
+}
+SCHEDULED = HOME / "projects/dotfiles/webfilter/.config/web-filter/scheduled-names.txt"
+STATE = HOME / ".local/state/web-review"
+EPOCH = 11644473600  # Chrome: microsecondi dal 1601
+
+
+def domain(url):
+    host = up.urlparse(url).netloc.lower().split(":")[0]
+    return host[4:] if host.startswith("www.") else host
+
+
+def scheduled_names():
+    if not SCHEDULED.exists():
+        return []
+    out = []
+    for line in SCHEDULED.read_text().splitlines():
+        line = line.split("#")[0].strip().lower()
+        if line:
+            out.append(line)
+    return out
+
+
+def is_scheduled(dom, names):
+    return any(dom == n or dom.endswith("." + n) for n in names)
+
+
+def load(since):
+    rows = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for source, path in DBS.items():
+            if not path.exists():
+                continue
+            copy = Path(tmp) / f"{source}.db"
+            shutil.copy(path, copy)
+            con = sqlite3.connect(copy)
+            q = ("select u.url, u.title, v.visit_time/1000000-? from visits v "
+                 "join urls u on u.id=v.url where v.visit_time/1000000-? >= ?")
+            for url, title, ts in con.execute(q, (EPOCH, EPOCH, since.timestamp())):
+                rows.append((source, url, title or "", dt.datetime.fromtimestamp(ts)))
+    return rows
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--days", type=int)
+    ap.add_argument("--since")
+    ap.add_argument("--mark", action="store_true", help="registra oggi come ultima revisione")
+    args = ap.parse_args()
+
+    marker = STATE / "last-review"
+    if args.since:
+        since = dt.datetime.fromisoformat(args.since)
+    elif args.days:
+        since = dt.datetime.now() - dt.timedelta(days=args.days)
+    elif marker.exists():
+        since = dt.datetime.fromisoformat(marker.read_text().strip())
+    else:
+        since = dt.datetime.now() - dt.timedelta(days=7)
+
+    names = scheduled_names()
+    rows = [r for r in load(since) if not r[1].startswith("http://127.0.0.1")]
+    print(f"# Cronologia dal {since:%Y-%m-%d %H:%M} al {dt.datetime.now():%Y-%m-%d %H:%M}")
+    print(f"Visite: {len(rows)} (tempo di permanenza non incluso: inaffidabile con le tab aperte)\n")
+
+    by = collections.defaultdict(list)
+    for r in rows:
+        by[domain(r[1])].append(r)
+
+    print("## Domini (visite | giorni attivi | home | in lista a calendario | di domenica)")
+    for dom, rs in sorted(by.items(), key=lambda x: -len(x[1]))[:40]:
+        days = {r[3].date() for r in rs}
+        home = sum(1 for r in rs if up.urlparse(r[1]).path in ("", "/"))
+        sun = sum(1 for r in rs if r[3].isoweekday() == 7)
+        flag = "sì" if is_scheduled(dom, names) else "no"
+        print(f"- {dom}: {len(rs)} | {len(days)} | {home} | {flag} | {sun}")
+
+    print("\n## Titoli più frequenti per i primi 12 domini")
+    for dom, rs in sorted(by.items(), key=lambda x: -len(x[1]))[:12]:
+        c = collections.Counter(r[2][:80] for r in rs if r[2])
+        print(f"- {dom}: " + "; ".join(f"{t} ({n})" for t, n in c.most_common(4)))
+
+    print("\n## Ricerche")
+    q = collections.Counter()
+    for _, url, _, _ in rows:
+        p = up.urlparse(url)
+        qs = up.parse_qs(p.query)
+        if "/search" in p.path and "google" in p.netloc or "youtube.com" in p.netloc and "/results" in p.path:
+            text = (qs.get("q") or qs.get("search_query") or [""])[0]
+            if text:
+                q[text] += 1
+    for text, n in q.most_common(30):
+        print(f"- {text} ({n})")
+
+    print("\n## Visite per giorno")
+    perday = collections.Counter(r[3].date() for r in rows)
+    for d in sorted(perday):
+        print(f"- {d:%a %d/%m}: {perday[d]}")
+    print("\n## Visite per ora")
+    hours = collections.Counter(r[3].hour for r in rows)
+    print(", ".join(f"{h}h:{hours[h]}" for h in sorted(hours)))
+
+    if args.mark:
+        STATE.mkdir(parents=True, exist_ok=True)
+        marker.write_text(dt.datetime.now().isoformat(timespec="seconds") + "\n")
+        print(f"\nUltima revisione registrata: {marker}")
+
+
+if __name__ == "__main__":
+    main()

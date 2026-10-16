@@ -1,0 +1,49 @@
+#!/bin/sh
+# Compone la lista finale di dnscrypt-proxy: blocchi sempre attivi (base) più
+# quelli a calendario, tranne nel giorno aperto. Lanciato dal timer a mezzanotte
+# e dopo ogni aggiornamento delle blocklist.
+
+set -eu
+
+state_dir=/var/lib/web-filter
+config_dir=/etc/web-filter
+base=$state_dir/base-names.txt
+destination=$config_dir/blocked-names.txt
+temporary=$(mktemp -d "$state_dir/schedule.XXXXXX")
+trap 'rm -rf -- "$temporary"' EXIT HUP INT TERM
+
+OPEN_DAY=7
+# shellcheck disable=SC1091
+[ -r "$config_dir/schedule.conf" ] && . "$config_dir/schedule.conf"
+
+[ -r "$base" ] || { echo "web-filter: manca $base; eseguire web-filter update." >&2; exit 1; }
+
+{
+    cat "$base"
+    if [ "$(date +%u)" -ne "$OPEN_DAY" ] && [ -r "$config_dir/scheduled-names.txt" ]; then
+        sed -e 's/[[:space:]]*#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+            "$config_dir/scheduled-names.txt" | grep -v '^$' | tr 'A-Z' 'a-z'
+        echo scheduled >"$state_dir/schedule-state"
+    else
+        echo open >"$state_dir/schedule-state"
+    fi
+} | LC_ALL=C sort -u >"$temporary/blocked-names.txt"
+
+if [ -e "$destination" ] && cmp -s "$temporary/blocked-names.txt" "$destination"; then
+    exit 0
+fi
+
+[ -e "$destination" ] && cp -a -- "$destination" "$temporary/previous"
+install -o root -g root -m 0644 "$temporary/blocked-names.txt" "$destination"
+
+if ! dnscrypt-proxy -check -config /etc/dnscrypt-proxy/dnscrypt-proxy.toml ||
+    { systemctl is-active --quiet dnscrypt-proxy.service &&
+        ! systemctl restart dnscrypt-proxy.service; }; then
+    if [ -e "$temporary/previous" ]; then
+        install -o root -g root -m 0644 "$temporary/previous" "$destination"
+        systemctl restart dnscrypt-proxy.service || true
+    fi
+    echo 'web-filter: configurazione non valida; ripristinata la lista precedente.' >&2
+    exit 1
+fi
+echo "web-filter: lista composta ($(cat "$state_dir/schedule-state"))."
