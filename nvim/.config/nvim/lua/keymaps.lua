@@ -119,6 +119,15 @@ vim.keymap.set("n", "<leader>fs", "<cmd>write<cr>", {
   desc = "Save file",
 })
 
+-- Palette: tutti i tasti con descrizione, cerca e Invio per eseguire
+vim.keymap.set("n", "<leader><leader>", function()
+  Snacks.picker.keymaps({ modes = { "n" }, title = "Palette" })
+end, { desc = "Palette (keymaps)" })
+
+vim.keymap.set("n", "<leader>?", function()
+  require("which-key").show({ global = false })
+end, { desc = "Tasti del buffer" })
+
 vim.keymap.set("n", "<leader>ff", function()
   Snacks.picker.files({ cwd = root() })
 end, { desc = "Find files" })

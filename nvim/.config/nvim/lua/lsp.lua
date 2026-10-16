@@ -20,6 +20,14 @@ function M.setup()
     },
   })
 
+  -- Header di sistema dai cross-compiler PlatformIO (avr-g++, xtensa-…)
+  vim.lsp.config("clangd", {
+    cmd = {
+      "clangd",
+      "--query-driver=" .. vim.fn.expand("~") .. "/.platformio/packages/toolchain-*/bin/*",
+    },
+  })
+
   vim.lsp.config("marksman", {
     filetypes = { "markdown", "markdown.mdx", "vimwiki" },
   })

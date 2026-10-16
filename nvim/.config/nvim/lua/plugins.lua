@@ -22,7 +22,8 @@ return {
     opts = {
       preset = "classic",
       delay = 250,
-      triggers = { { "<leader>", mode = { "n", "x" } } },
+      -- Popup anche per g, z, [, ], <C-w>, registri e marks, non solo Space
+      triggers = { { "<auto>", mode = "nxso" } },
       spec = {
         {
           mode = { "n", "x" },
@@ -33,6 +34,7 @@ return {
           { "<leader>f", group = "Files" },
           { "<leader>g", group = "Git" },
           { "<leader>i", group = "Inbox" },
+          { "<leader>p", group = "PlatformIO" },
           { "<leader>q", group = "Quit" },
           { "<leader>s", group = "Search" },
           { "<leader>w", group = "Windows / Wiki" },
