@@ -27,10 +27,11 @@ for dependency in dnscrypt-proxy jq curl ufw; do
     }
 done
 jq -e . "$source_dir/browser-policy.json" >/dev/null
+jq -e . "$source_dir/firefox-policy.json" >/dev/null
 
 as_root install -d -o root -g root -m 0755 \
     /etc/web-filter /etc/systemd/resolved.conf.d \
-    /etc/brave/policies/managed /etc/chromium/policies/managed \
+    /etc/brave/policies/managed /etc/chromium/policies/managed /etc/firefox/policies \
     /usr/local/libexec /usr/local/sbin "$state_dir"
 
 if ! as_root test -e "$state_dir/dnscrypt-proxy.toml.original"; then
@@ -47,6 +48,8 @@ as_root install -o root -g root -m 0644 \
     "$source_dir/browser-policy.json" /etc/brave/policies/managed/dotfiles-web-filter.json
 as_root install -o root -g root -m 0644 \
     "$source_dir/browser-policy.json" /etc/chromium/policies/managed/dotfiles-web-filter.json
+as_root install -o root -g root -m 0644 \
+    "$source_dir/firefox-policy.json" /etc/firefox/policies/policies.json
 as_root install -o root -g root -m 0755 \
     "$source_dir/web-filter-update" /usr/local/libexec/web-filter-update
 as_root install -o root -g root -m 0755 \
@@ -74,4 +77,4 @@ as_root systemctl reset-failed dnscrypt-proxy-resolvconf.service 2>/dev/null || 
 as_root /usr/local/libexec/web-filter-update
 as_root /usr/local/sbin/web-filter _activate
 
-echo 'web-filter: installazione completata. Riavviare Brave e Chromium.'
+echo 'web-filter: installazione completata. Riavviare Brave, Chromium e Firefox.'

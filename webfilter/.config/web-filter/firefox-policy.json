@@ -1,0 +1,11 @@
+{
+  "policies": {
+    "WebsiteFilter": {
+      "Block": [
+        "*://*.youtube.com/*",
+        "*://youtu.be/*",
+        "*://*.youtube-nocookie.com/*"
+      ]
+    }
+  }
+}

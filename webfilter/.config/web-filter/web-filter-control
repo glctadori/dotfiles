@@ -141,6 +141,7 @@ remove)
         /etc/systemd/system/web-filter-update.timer \
         /etc/brave/policies/managed/dotfiles-web-filter.json \
         /etc/chromium/policies/managed/dotfiles-web-filter.json \
+        /etc/firefox/policies/policies.json \
         /usr/local/libexec/web-filter-update
     if [ -e "$state_dir/dnscrypt-proxy.toml.original" ]; then
         install -o root -g root -m 0644 \

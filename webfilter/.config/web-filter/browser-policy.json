@@ -28,5 +28,6 @@
   },
   "IncognitoModeAvailability": 1,
   "ProxyMode": "direct",
+  "URLBlocklist": ["youtube.com", "youtu.be", "youtube-nocookie.com"],
   "TorDisabled": true
 }
