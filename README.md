@@ -11,13 +11,14 @@ From the repository root:
 ```
 
 `bootstrap` installs the base system, then automatically runs GNU Stow on every
-normal top-level directory. Directories whose name starts with `_` are internal
-to the repository and are not stowed.
+top-level directory tracked by git. Directories whose name starts with `_` are
+internal to the repository, and untracked ones (such as `node_modules/`) are never
+stowed.
 
 This means adding a new Stow package requires no bootstrap change:
 
 ```text
-tmux/       -> stowed automatically
+tmux/       -> stowed automatically once committed
 _setup/     -> ignored
 ```
 
@@ -47,6 +48,7 @@ _setup/     -> ignored
 Optional setup is deliberately separate:
 
 ```sh
+./_setup/autologin
 ./_setup/plymouth
 ./_setup/ros
 ```

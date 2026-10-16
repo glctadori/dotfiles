@@ -14,12 +14,12 @@ run() {
 # Base system first: installs stow and the packages needed by the dotfiles.
 run "Base system" "$ROOT/_setup/base"
 
-# Every normal top-level directory is a Stow package.
+# Every top-level directory tracked by git is a Stow package: untracked ones
+# (node_modules, tool stubs) never reach $HOME.
 # Directories beginning with '_' are repository internals and are ignored.
 echo
 echo "==> Stowing dotfiles"
-for dir in */; do
-    package="${dir%/}"
+for package in $(git -C "$ROOT" ls-files | awk -F/ 'NF > 1 { print $1 }' | sort -u); do
     [[ "$package" == _* ]] && continue
     echo "  -> $package"
     stow --restow --target="$HOME" "$package"
@@ -41,4 +41,4 @@ run "Printer"     "$ROOT/_setup/printer"
 
 echo
 echo "Bootstrap complete."
-echo "Optional: _setup/plymouth, _setup/ros"
+echo "Optional: _setup/autologin, _setup/plymouth, _setup/ros"
