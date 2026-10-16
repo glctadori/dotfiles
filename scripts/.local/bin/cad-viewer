@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Avvia (o riusa) il CAD Viewer di text-to-cad e lo apre come webapp.
+# Uso: cad-viewer [file]  (percorso assoluto di un STEP/STL/3MF/GLB)
+set -euo pipefail
+
+url="$(uvx --no-config --managed-python --python 3.13 --from cadgen==0.7.21 \
+    cadgen viewer --host 127.0.0.1 --json --detach | jq -r .url)"
+
+if [[ $# -ge 1 ]]; then
+    url="${url%/}/?file=$(jq -rn --arg f "$(realpath "$1")" '$f|@uri')"
+fi
+
+exec webapp-launch "$url"
