@@ -1,7 +1,14 @@
 #!/bin/sh
-# Ultima build gestita dall'updater di Claude Code; la sandbox e' nelle settings (_setup/claude-code).
+# Ultima build gestita dall'updater di Claude Code.
 dir="$HOME/.local/share/claude/versions"
 bin="$dir/$(ls "$dir" | sort -V | tail -n1)"
+
+# Il plugin LaTeX capisce chiaro/scuro da COLORFGBG: lo prende dal tema attivo
+# a ogni avvio, invece di scriverlo in settings.json (versionato).
+case "$(cat "$HOME/.config/themes/current/mode" 2>/dev/null)" in
+  light) export COLORFGBG='0;15' ;;
+  dark)  export COLORFGBG='15;0' ;;
+esac
 
 # text-to-cad avvia un server MCP lento: attivo solo sotto ~/projects/cad (sottocartelle incluse).
 case "$PWD/" in

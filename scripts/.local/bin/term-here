@@ -1,9 +1,12 @@
 #!/bin/sh
 # Apre kitty nella directory della finestra kitty a fuoco.
 #   term-here             terminale nella stessa directory
-#   term-here agent [cmd] agente (default claude) nella radice del progetto in ~/projects;
-#                         se la directory non e' un progetto, chiede la cartella con fuzzel
+#   term-here agent [cmd] agente (default claude) nella radice del progetto in ~/projects
+#                         (o in ~/projects/cad/<progetto>); se la directory non e' un
+#                         progetto, chiede la cartella con fuzzel, o ne crea una nuova
 proj="$HOME/projects"
+cad="$proj/cad"
+new_entry='+ nuovo progetto'
 
 win=$(hyprctl activewindow -j 2>/dev/null)
 pid=$(echo "$win" | jq -r '.pid // empty')
@@ -26,14 +29,47 @@ if [ "$1" != agent ]; then
     exec kitty --single-instance --directory "$cwd"
 fi
 
+# Progetti: cartelle in ~/projects, e quelle in ~/projects/cad come cad/<nome>
+list_projects() {
+    printf '%s\n' "$new_entry"
+    find "$proj" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf '%f\n' | sort
+    find "$cad" -mindepth 1 -maxdepth 1 -type d ! -name '.*' -printf 'cad/%f\n' | sort
+}
+
+new_project() {
+    where=$(printf 'projects\ncad\n' | fuzzel --dmenu -p 'nuovo progetto in: ') || exit 0
+    case "$where" in
+        projects) parent=$proj ;;
+        cad) parent=$cad ;;
+        *) exit 0 ;;
+    esac
+    name=$(fuzzel --dmenu --prompt-only "nome ($where): " </dev/null) || exit 0
+    name=$(printf '%s' "$name" | tr ' ' '-' | tr -d '/')
+    [ -n "$name" ] || exit 0
+    dir="$parent/$name"
+    if [ -e "$dir" ]; then
+        notify-send "term-here" "Esiste gia', apro: ${dir#"$HOME"/}"
+        return
+    fi
+    mkdir -p "$dir"
+    # i progetti in cad stanno nella repo cad, gli altri hanno la loro
+    [ "$parent" = "$proj" ] && git -C "$dir" init -q
+}
+
 shift
 case "$cwd" in
+    "$cad"/*) dir="$cad/$(echo "${cwd#"$cad"/}" | cut -d/ -f1)" ;;
     "$proj"/*) dir="$proj/$(echo "${cwd#"$proj"/}" | cut -d/ -f1)" ;;
     *)
-        name=$(ls -1 "$proj" | fuzzel --dmenu -p 'progetto: ') || exit 0
-        [ -n "$name" ] && dir="$proj/$name" || exit 0
+        name=$(list_projects | fuzzel --dmenu -p 'progetto: ') || exit 0
+        case "$name" in
+            '') exit 0 ;;
+            "$new_entry") new_project ;;
+            *) dir="$proj/$name" ;;
+        esac
         ;;
 esac
+[ -d "$dir" ] || exit 0
 
 [ $# -gt 0 ] || set -- claude
 exec kitty --single-instance --directory "$dir" "$@"

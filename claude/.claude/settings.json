@@ -1,7 +1,4 @@
 {
-  "env": {
-    "COLORFGBG": "15;0"
-  },
   "permissions": {
     "deny": [
       "Read(~/.password-store/**)",
@@ -12,7 +9,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus",
+  "model": "sonnet",
   "hooks": {
     "SessionStart": [
       {
@@ -115,6 +112,6 @@
     }
   },
   "promptSuggestionEnabled": false,
-  "tui": "default",
+  "tui": "fullscreen",
   "theme": "auto"
 }
