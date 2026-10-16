@@ -1,5 +1,5 @@
---color=fg:#403e3c,bg:#fffcf0,hl:#205ea6
+--color=fg:#100f0f,bg:#fffcf0,hl:#205ea6
 --color=fg+:#100f0f,bg+:#cecdc3,hl+:#205ea6
 --color=info:#878580,prompt:#205ea6,pointer:#205ea6
---color=marker:#205ea6,spinner:#205ea6,header:#878580
---color=border:#b7b5ac,label:#878580,query:#100f0f,gutter:#fffcf0
+--color=marker:#879a39,spinner:#205ea6,header:#878580
+--color=border:#e6e4d9,label:#878580,query:#100f0f,gutter:#fffcf0

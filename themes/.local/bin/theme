@@ -28,6 +28,15 @@ done
 
 pkill -SIGUSR2 waybar 2>/dev/null || true
 makoctl reload 2>/dev/null || true
+
+# Brave: colore della barra via policy (helper installato da _setup/brave).
+# Chiaro/scuro lo segue già da gsettings color-scheme, qui sotto.
+brave_color=$(sed -n 's/^background *= *"\(#[0-9a-fA-F]\{6\}\)".*/\1/p' "$THEMES/current/palette.toml")
+if [ -n "$brave_color" ] && sudo -n /usr/local/libexec/brave-theme-color "$brave_color" 2>/dev/null; then
+    if pgrep -x brave >/dev/null; then
+        brave-browser --refresh-platform-policy --no-startup-window >/dev/null 2>&1 &
+    fi
+fi
 # Path risolto: con il symlink "current" il path non cambia e hyprpaper non ricarica
 hyprctl hyprpaper wallpaper ",$(readlink -f "$THEMES/current/wallpaper.png")" >/dev/null 2>&1 || true
 
@@ -46,23 +55,6 @@ done
 
 mode=$(cat "$THEMES/current/mode")
 
-# Let Claude Code's LaTeX plugin detect the system theme while theme stays auto.
-python3 - "$mode" <<'PYCLAUDE'
-import json
-import os
-import pathlib
-import sys
-
-mode = sys.argv[1]
-if mode in ('light', 'dark'):
-    config_dir = pathlib.Path(os.environ.get('CLAUDE_CONFIG_DIR') or pathlib.Path.home() / '.claude')
-    settings = config_dir / 'settings.json'
-    if settings.exists():
-        data = json.loads(settings.read_text())
-        data.setdefault('env', {})['COLORFGBG'] = '0;15' if mode == 'light' else '15;0'
-        settings.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
-PYCLAUDE
-
 case "$mode" in
     dark)
         gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'
@@ -73,18 +65,3 @@ case "$mode" in
         gsettings set org.gnome.desktop.interface color-scheme 'prefer-light'
         ;;
 esac
-# echo "Theme: $THEME"
-
-# Carica neovim theme
-# load file in theme/current/neovim da init.lua
-# dentro colorscheme(x) e set bg dark/light
-# poi reload live theme
-
-# lock
-# zathura
-# neomutt
-# brave
-# firefox
-# foot
-# fzf
-# gtk: dark light

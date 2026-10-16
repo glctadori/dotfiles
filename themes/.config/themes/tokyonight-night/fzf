@@ -1,5 +1,5 @@
---color=fg:#c0caf5,bg:#1a1b26,hl:#e0af68
---color=fg+:#c0caf5,bg+:#33467c,hl+:#e0af68
---color=info:#7aa2f7,prompt:#7dcfff,pointer:#bb9af7
---color=marker:#9ece6a,spinner:#7dcfff,header:#7aa2f7
---color=border:#414868,label:#7aa2f7,query:#c0caf5,gutter:#1a1b26
+--color=fg:#c0caf5,bg:#1a1b26,hl:#7aa2f7
+--color=fg+:#c0caf5,bg+:#24283b,hl+:#7aa2f7
+--color=info:#565f89,prompt:#7aa2f7,pointer:#7aa2f7
+--color=marker:#9ece6a,spinner:#7aa2f7,header:#565f89
+--color=border:#414868,label:#565f89,query:#c0caf5,gutter:#1a1b26

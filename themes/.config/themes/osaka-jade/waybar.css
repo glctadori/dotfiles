@@ -1,3 +1,4 @@
+/* Generato da theme-build; modifica palette.toml. */
 window#waybar {
     color: #c1c497;
 }
@@ -25,14 +26,14 @@ window#waybar {
 }
 
 #window {
-    color: #d6d5bc;
+    color: #81b8a8;
 }
 
 #network,
-#custom-pomodoro,
-#custom-agent-usage,
-#custom-project,
-#custom-project-agents,
+#custom-idle,
+#custom-claude,
+#custom-codex,
+#custom-openrouter,
 #pulseaudio,
 #battery,
 #clock {

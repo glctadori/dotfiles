@@ -60,6 +60,30 @@ everything in `claude/.claude/` except the tracked files. Plugins are declared
 in `settings.json` and installed by `_setup/dev`. Claude Code runs without sandbox
 or managed settings; `settings.json` only denies reading `pass` and gnupg.
 
+## Themes
+
+Each theme in `themes/.config/themes/<name>/` is defined by `palette.toml`
+(semantic colors plus the 16 terminal colors) and a `wallpaper.png`. Every other
+file is generated: edit the palette, never the outputs.
+
+```sh
+theme-build [NAME...]               # regenerate (all themes if none given)
+theme-build new NAME [--from THEME] # new theme from an existing palette
+theme-build new NAME --kitty FILE   # new theme from a kitty theme .conf
+theme NAME                          # apply (Super+F12: theme-menu)
+```
+
+Neovim uses the theme's `nvim.lua`. Themes with a dedicated colorscheme plugin
+keep a hand-written `nvim.lua` (plugins live in `nvim/.config/nvim/lua/plugins.lua`);
+new themes get one generated with `mini.base16` from the palette, regenerated on
+every build until it is rewritten by hand.
+
+Browsers: Firefox reads `current/firefox.css` through `userChrome.css`
+(`setup-firefox-theme` links the profiles; applies on restart). Brave gets the
+palette background as the `BrowserThemeColor` policy, live: `_setup/brave`
+installs a root helper that writes only that policy, allowed via sudoers,
+because the policy directory must stay root-owned for the web filter.
+
 ## Markdown PDF and printing
 
 In Neovim, Markdown and Vimwiki buffers provide:

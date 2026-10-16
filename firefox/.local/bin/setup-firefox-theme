@@ -11,22 +11,7 @@ source = config / 'firefox' / 'userChrome.css'
 if not source.is_file():
     raise SystemExit('Stow the firefox package first: stow --restow firefox')
 
-for theme in themes.iterdir():
-    if theme.name == 'current' or not (theme / 'kitty.conf').is_file():
-        continue
-    colors = {}
-    for line in (theme / 'kitty.conf').read_text().splitlines():
-        fields = line.split()
-        if len(fields) == 2 and fields[1].startswith('#'):
-            colors[fields[0]] = fields[1]
-    colors.setdefault('selection_background', colors.get('color8', colors['background']))
-    keys = {'bg': 'background', 'fg': 'foreground',
-            'selection': 'selection_background', 'accent': 'color4'}
-    css = ':root {\n' + ''.join(
-        f'  --df-{name}: {colors[key]};\n' for name, key in keys.items()
-    ) + '}\n'
-    (theme / 'firefox.css').write_text(css)
-
+# firefox.css di ogni tema lo genera theme-build dalla palette
 roots = [config / 'mozilla/firefox', home / '.mozilla/firefox',
          home / 'snap/firefox/common/.mozilla/firefox',
          home / '.var/app/org.mozilla.firefox/.mozilla/firefox']
@@ -108,4 +93,4 @@ for root in roots:
         count += 1
 if not count:
     raise SystemExit('No Firefox profiles found. Start Firefox once, then rerun.')
-print('Restart Firefox to apply. Rerun after adding or editing theme palettes.')
+print('Restart Firefox to apply. Rerun after creating a new Firefox profile.')

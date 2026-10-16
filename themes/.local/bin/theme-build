@@ -1,0 +1,365 @@
+#!/usr/bin/env python3
+"""Genera i file dei temi da ~/.config/themes/<tema>/palette.toml.
+
+  theme-build [TEMA...]                 rigenera i temi (tutti se nessuno)
+  theme-build new NOME [--from TEMA]    nuovo tema partendo dalla palette di TEMA
+  theme-build new NOME --kitty FILE     nuovo tema da un tema kitty (.conf)
+
+La palette è l'unica fonte: kitty, fuzzel, mako, hyprland, hyprlock, waybar,
+fzf, zathura e firefox vengono riscritti a ogni build. nvim.lua viene generato
+(con mini.base16) solo se manca o è già stato generato da qui: i temi con un
+plugin Neovim dedicato tengono il loro nvim.lua scritto a mano.
+"""
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+THEMES = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "themes"
+MARK = "Generato da theme-build"
+NVIM_MARK = f"-- {MARK} (mini.base16): per un plugin dedicato, riscrivilo a mano."
+
+SLOTS = ["background", "surface", "selection", "foreground", "muted", "subtle",
+         "accent", "info", "red", "green", "yellow", "blue", "purple", "cyan"]
+
+
+def rgb(hex_color):
+    h = hex_color.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def mix(a, b, t):
+    """Colore tra a e b: t=0 è a, t=1 è b."""
+    ca, cb = rgb(a), rgb(b)
+    return "#" + "".join(f"{round(x + (y - x) * t):02x}" for x, y in zip(ca, cb))
+
+
+def complete(p):
+    """Ricava gli slot mancanti, così basta una palette minima."""
+    bg, fg = p["background"], p["foreground"]
+    p.setdefault("surface", mix(bg, fg, 0.07))
+    p.setdefault("selection", mix(bg, fg, 0.18))
+    p.setdefault("subtle", mix(bg, fg, 0.25))
+    p.setdefault("muted", mix(bg, fg, 0.5))
+    p.setdefault("accent", p["blue"])
+    p.setdefault("info", p["blue"])
+    p.setdefault("mode", "light" if sum(rgb(bg)) > 382 else "dark")
+    ansi = [p["subtle"], p["red"], p["green"], p["yellow"],
+            p["blue"], p["purple"], p["cyan"], fg]
+    terminal = p.setdefault("terminal", {})
+    for i in range(16):
+        terminal.setdefault(f"color{i}", ansi[i % 8])
+    missing = [s for s in SLOTS if s not in p]
+    if missing:
+        sys.exit(f"palette: mancano {', '.join(missing)}")
+    return p
+
+
+def hx(c):
+    return c.lstrip("#")
+
+
+def kitty(p):
+    t = p["terminal"]
+    colors = "\n".join(f"color{i:<2} {t[f'color{i}']}" for i in range(16))
+    # [terminal].selection se il terminale vuole una selezione diversa dai menu
+    selection = t.get("selection", p["selection"])
+    return f"""# {MARK}; modifica palette.toml.
+
+background {p['background']}
+foreground {p['foreground']}
+
+selection_background {selection}
+selection_foreground {p['foreground']}
+
+cursor {p['foreground']}
+cursor_text_color {p['background']}
+
+{colors}
+"""
+
+
+def fuzzel(p):
+    return f"""# {MARK}; modifica palette.toml.
+[colors]
+background={hx(p['background'])}ff
+text={hx(p['foreground'])}ff
+prompt={hx(p['muted'])}ff
+placeholder={hx(p['muted'])}ff
+input={hx(p['foreground'])}ff
+match={hx(p['info'])}ff
+selection={hx(p['selection'])}ff
+selection-text={hx(p['foreground'])}ff
+selection-match={hx(p['accent'])}ff
+counter={hx(p['muted'])}ff
+border={hx(p['accent'])}ff
+"""
+
+
+def mako(p):
+    return f"""# {MARK}; modifica palette.toml.
+background-color={p['background']}
+text-color={p['foreground']}
+border-color={p['accent']}
+"""
+
+
+def hyprland(p):
+    # Ombra: sfondo scurito nei temi scuri, grigio del tema in quelli chiari
+    shadow = (f"{hx(mix(p['background'], '#000000', 0.45))}ee" if p["mode"] == "dark"
+              else f"{hx(p['muted'])}aa")
+    return f"""# {MARK}; modifica palette.toml.
+general {{
+    col.active_border = rgb({hx(p['accent'])})
+    col.inactive_border = rgb({hx(p['subtle'])})
+}}
+
+decoration {{
+    shadow {{
+        color = rgba({shadow})
+    }}
+}}
+"""
+
+
+def hyprlock(p):
+    return f"""# {MARK}; modifica palette.toml.
+$lock_inner = rgba({hx(p['background'])}cc)
+$lock_outer = rgba({hx(p['muted'])}ff)
+$lock_text = rgba({hx(p['foreground'])}ff)
+$lock_check = rgba({hx(p['green'])}ff)
+$lock_fail = rgba({hx(p['red'])}ff)
+"""
+
+
+def waybar(p):
+    r, g, b = rgb(p["background"])
+    return f"""/* {MARK}; modifica palette.toml. */
+window#waybar {{
+    color: {p['foreground']};
+}}
+
+#workspaces,
+#mpd,
+#window,
+.modules-right {{
+    background: rgba({r}, {g}, {b}, 0.94);
+}}
+
+#workspaces button {{
+    color: {p['muted']};
+}}
+
+#workspaces button.active {{
+    background: transparent;
+    color: {p['accent']};
+    font-weight: bold;
+}}
+
+#workspaces button.urgent {{
+    background: transparent;
+    color: {p['red']};
+}}
+
+#window {{
+    color: {p['muted']};
+}}
+
+#network,
+#custom-idle,
+#custom-claude,
+#custom-codex,
+#custom-openrouter,
+#pulseaudio,
+#battery,
+#clock {{
+    color: {p['foreground']};
+}}
+
+#battery.warning {{
+    color: {p['yellow']};
+}}
+
+#battery.critical {{
+    color: {p['red']};
+}}
+"""
+
+
+def fzf(p):
+    # Letto con $(cat …) in .zshrc: niente commenti
+    return f"""--color=fg:{p['foreground']},bg:{p['background']},hl:{p['accent']}
+--color=fg+:{p['foreground']},bg+:{p['selection']},hl+:{p['accent']}
+--color=info:{p['muted']},prompt:{p['accent']},pointer:{p['accent']}
+--color=marker:{p['green']},spinner:{p['accent']},header:{p['muted']}
+--color=border:{p['subtle']},label:{p['muted']},query:{p['foreground']},gutter:{p['background']}
+"""
+
+
+def zathura(p):
+    bg, fg = p["background"], p["foreground"]
+    return f"""# {MARK}; modifica palette.toml.
+set default-bg "{bg}"
+set default-fg "{fg}"
+set statusbar-bg "{p['surface']}"
+set statusbar-fg "{fg}"
+set inputbar-bg "{p['surface']}"
+set inputbar-fg "{p['info']}"
+set completion-bg "{p['surface']}"
+set completion-fg "{fg}"
+set completion-highlight-bg "{p['info']}"
+set completion-highlight-fg "{bg}"
+set notification-bg "{p['info']}"
+set notification-fg "{bg}"
+set notification-error-bg "{p['red']}"
+set notification-error-fg "{bg}"
+set notification-warning-bg "{p['yellow']}"
+set notification-warning-fg "{bg}"
+set recolor true
+set recolor-darkcolor "{fg}"
+set recolor-lightcolor "{bg}"
+set recolor-keephue true
+set recolor-reverse-video true
+set render-loading true
+set render-loading-bg "{bg}"
+set render-loading-fg "{fg}"
+"""
+
+
+def firefox(p):
+    return f"""/* {MARK}; modifica palette.toml. */
+:root {{
+  --df-bg: {p['background']};
+  --df-fg: {p['foreground']};
+  --df-selection: {p['selection']};
+  --df-accent: {p['info']};
+}}
+"""
+
+
+def nvim(p, name):
+    base = {
+        "base00": p["background"], "base01": p["surface"], "base02": p["selection"],
+        "base03": p["muted"], "base04": mix(p["muted"], p["foreground"], 0.5),
+        "base05": p["foreground"], "base06": p["foreground"], "base07": p["foreground"],
+        "base08": p["red"], "base09": mix(p["red"], p["yellow"], 0.5), "base0A": p["yellow"],
+        "base0B": p["green"], "base0C": p["cyan"], "base0D": p["blue"],
+        "base0E": p["purple"], "base0F": p["accent"],
+    }
+    rows = "\n".join(f'    {k} = "{v}",' for k, v in base.items())
+    return f"""{NVIM_MARK}
+vim.o.background = "{p['mode']}"
+require("mini.base16").setup({{
+  palette = {{
+{rows}
+  }},
+}})
+vim.g.colors_name = "{name}"
+"""
+
+
+FILES = {
+    "kitty.conf": kitty, "fuzzel.ini": fuzzel, "mako.conf": mako,
+    "hyprland.conf": hyprland, "hyprlock.conf": hyprlock, "waybar.css": waybar,
+    "fzf": fzf, "zathurarc": zathura, "firefox.css": firefox,
+}
+
+
+def load(theme_dir):
+    path = theme_dir / "palette.toml"
+    if not path.exists():
+        sys.exit(f"{theme_dir.name}: manca palette.toml")
+    with path.open("rb") as f:
+        return complete(tomllib.load(f))
+
+
+def build(name):
+    theme_dir = THEMES / name
+    p = load(theme_dir)
+    for filename, render in FILES.items():
+        (theme_dir / filename).write_text(render(p))
+    (theme_dir / "mode").write_text(p["mode"] + "\n")
+    nvim_file = theme_dir / "nvim.lua"
+    if not nvim_file.exists() or nvim_file.read_text().startswith(NVIM_MARK):
+        nvim_file.write_text(nvim(p, name))
+    print(f"{name}: ok")
+
+
+def all_themes():
+    return sorted(d.name for d in THEMES.iterdir()
+                  if d.is_dir() and not d.is_symlink() and (d / "palette.toml").exists())
+
+
+def from_kitty(path):
+    """Palette minima da un tema kitty: il resto lo ricava complete()."""
+    keys = {}
+    for line in Path(path).read_text().splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[1].startswith("#"):
+            keys[parts[0]] = parts[1]
+    try:
+        p = {"background": keys["background"], "foreground": keys["foreground"],
+             "red": keys["color1"], "green": keys["color2"], "yellow": keys["color3"],
+             "blue": keys["color4"], "purple": keys["color5"], "cyan": keys["color6"]}
+    except KeyError as e:
+        sys.exit(f"{path}: manca {e.args[0]}")
+    p["terminal"] = {f"color{i}": keys[f"color{i}"] for i in range(16) if f"color{i}" in keys}
+    if "selection_background" in keys:
+        p["terminal"]["selection"] = keys["selection_background"]
+    return p
+
+
+def dump(p):
+    lines = [f'mode = "{p["mode"]}"', ""]
+    lines += [f'{s:<10} = "{p[s]}"' for s in SLOTS]
+    lines += ["", "[terminal]"]
+    if "selection" in p["terminal"]:
+        lines.append(f'selection = "{p["terminal"]["selection"]}"')
+    lines += [f'color{i:<2} = "{p["terminal"][f"color{i}"]}"' for i in range(16)]
+    return "\n".join(lines) + "\n"
+
+
+def new(args):
+    target = THEMES / args.name
+    if target.exists():
+        sys.exit(f"{args.name}: esiste già")
+    if args.kitty:
+        p = complete(from_kitty(args.kitty))
+        source = None
+    else:
+        source = THEMES / (args.source or os.readlink(THEMES / "current").rstrip("/").split("/")[-1])
+        p = load(source)
+    target.mkdir()
+    (target / "palette.toml").write_text(dump(p))
+    if source and (source / "wallpaper.png").exists():
+        shutil.copy(source / "wallpaper.png", target / "wallpaper.png")
+    build(args.name)
+    print(f"Modifica {target / 'palette.toml'}, poi: theme-build {args.name}; theme {args.name}")
+    if not (target / "wallpaper.png").exists():
+        print("Manca wallpaper.png: aggiungilo nella cartella del tema.")
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "new":
+        parser = argparse.ArgumentParser(prog="theme-build new")
+        parser.add_argument("name")
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument("--from", dest="source", help="tema da cui copiare la palette")
+        group.add_argument("--kitty", help="file .conf di un tema kitty")
+        return new(parser.parse_args(sys.argv[2:]))
+    names = sys.argv[1:] or all_themes()
+    if not names:
+        sys.exit("Nessun tema con palette.toml")
+    for name in names:
+        build(name)
+    current = os.path.realpath(THEMES / "current")
+    if os.path.basename(current) in names and shutil.which("theme"):
+        subprocess.run(["theme", os.path.basename(current)], check=False)
+
+
+if __name__ == "__main__":
+    main()

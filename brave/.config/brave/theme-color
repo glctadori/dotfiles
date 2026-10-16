@@ -1,0 +1,18 @@
+#!/bin/sh
+# Installato da _setup/brave in /usr/local/libexec/brave-theme-color e
+# permesso con sudo senza password a chi cambia tema (vedi `theme`).
+# Scrive solo BrowserThemeColor: la cartella delle policy resta di root,
+# perché le altre policy reggono il filtro web.
+set -eu
+
+color=${1:-}
+case "$color" in
+    \#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]) ;;
+    *) echo "Uso: ${0##*/} '#rrggbb'" >&2; exit 2 ;;
+esac
+
+dir=/etc/brave/policies/managed
+install -d -m 0755 "$dir"
+printf '{ "BrowserThemeColor": "%s" }\n' "$color" > "$dir/dotfiles-theme.json.tmp"
+chmod 0644 "$dir/dotfiles-theme.json.tmp"
+mv "$dir/dotfiles-theme.json.tmp" "$dir/dotfiles-theme.json"

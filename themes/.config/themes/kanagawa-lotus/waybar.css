@@ -1,3 +1,4 @@
+/* Generato da theme-build; modifica palette.toml. */
 window#waybar {
     color: #545464;
 }
@@ -14,20 +15,25 @@ window#waybar {
 }
 
 #workspaces button.active {
-    background: #4d699b;
-    color: #f2ecbc;
+    background: transparent;
+    color: #4d699b;
+    font-weight: bold;
 }
 
 #workspaces button.urgent {
-    background: #c84053;
-    color: #f2ecbc;
+    background: transparent;
+    color: #c84053;
 }
 
 #window {
-    color: #545464;
+    color: #8a8980;
 }
 
 #network,
+#custom-idle,
+#custom-claude,
+#custom-codex,
+#custom-openrouter,
 #pulseaudio,
 #battery,
 #clock {

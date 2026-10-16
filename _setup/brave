@@ -8,6 +8,12 @@ POLICY_SOURCE="$CONFIG_ROOT/brave/policies/minimal.json"
 POLICY_DIR="/etc/brave/policies/managed"
 POLICY_DEST="$POLICY_DIR/dotfiles-minimal.json"
 
+# Colore del tema: helper di root che scrive solo BrowserThemeColor,
+# lanciato da `theme` con sudo senza password
+THEME_HELPER_SOURCE="$CONFIG_ROOT/brave/theme-color"
+THEME_HELPER="/usr/local/libexec/brave-theme-color"
+THEME_SUDOERS="/etc/sudoers.d/brave-theme-color"
+
 install_brave() {
     echo "Setting up Brave..."
 
@@ -43,6 +49,16 @@ EOF2
         "$POLICY_SOURCE" \
         "$POLICY_DEST"
 
+    # ── Theme color helper ───────────────────────────────────────────
+    sudo install -D -o root -g root -m 0755 "$THEME_HELPER_SOURCE" "$THEME_HELPER"
+    sudoers=$(mktemp)
+    printf '%s ALL=(root) NOPASSWD: %s\n' "$USER" "$THEME_HELPER" > "$sudoers"
+    if sudo visudo -cq -f "$sudoers"; then
+        sudo install -o root -g root -m 0440 "$sudoers" "$THEME_SUDOERS"
+    else
+        echo "Invalid sudoers rule, theme color helper not enabled" >&2
+    fi
+    rm -f "$sudoers"
 
     echo
     echo "Brave configured."
@@ -55,7 +71,8 @@ remove_brave() {
     echo "Removing Brave setup..."
 
     # ── Remove policy ────────────────────────────────────────────────
-    sudo rm -f "$POLICY_DEST"
+    sudo rm -f "$POLICY_DEST" "$POLICY_DIR/dotfiles-theme.json" \
+        "$THEME_HELPER" "$THEME_SUDOERS"
 
 
     echo "Brave setup removed."

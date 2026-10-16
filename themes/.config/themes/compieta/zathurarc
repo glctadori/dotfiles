@@ -1,4 +1,4 @@
-# Generato da theme-build; non modificare a mano.
+# Generato da theme-build; modifica palette.toml.
 set default-bg "#1c1714"
 set default-fg "#e3d9c6"
 set statusbar-bg "#2a211b"
@@ -12,7 +12,7 @@ set completion-highlight-fg "#1c1714"
 set notification-bg "#8ea9c8"
 set notification-fg "#1c1714"
 set notification-error-bg "#c2604f"
-set notification-error-fg "#e3d9c6"
+set notification-error-fg "#1c1714"
 set notification-warning-bg "#c9a15a"
 set notification-warning-fg "#1c1714"
 set recolor true
@@ -20,3 +20,6 @@ set recolor-darkcolor "#e3d9c6"
 set recolor-lightcolor "#1c1714"
 set recolor-keephue true
 set recolor-reverse-video true
+set render-loading true
+set render-loading-bg "#1c1714"
+set render-loading-fg "#e3d9c6"
