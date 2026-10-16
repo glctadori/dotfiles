@@ -22,9 +22,6 @@
   "HomepageIsNewTabPage": false,
   "NewTabPageLocation": "about:blank",
 
-  "ForcedLanguages": [
-    "en-US"
-  ],
   "SpellcheckLanguage": [
     "it",
     "en-US"
